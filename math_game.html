@@ -64,10 +64,10 @@
             @apply bg-gray-300 text-gray-800 hover:bg-gray-400;
         }
         .btn-toggle.active {
-            @apply bg-green-500 text-white hover:bg-green-600;
+            @apply bg-red-500 text-white hover:bg-red-600;
         }
         .btn-toggle:not(.active) {
-            @apply bg-gray-300 text-gray-800 hover:bg-gray-400;
+            @apply bg-blue-500 text-white hover:bg-blue-600;
         }
     </style>
 </head>
@@ -109,27 +109,31 @@
             </div>
         </div>
 
-        <!-- Expression and Calculation -->
-        <div class="bg-gray-100 p-6 rounded-2xl mb-8">
-            <h2 class="text-2xl font-bold text-gray-700 mb-4 text-center">組合你的算式</h2>
-            <input id="expression-input" type="text" class="w-full px-4 py-3 text-center text-xl rounded-xl border-2 border-gray-300 focus:border-blue-500 focus:outline-none mb-4" placeholder="例如：( 5 + 3 ) * 2 - |1|">
-            <div class="flex gap-4">
-                <button id="calculate-btn" class="btn btn-primary flex-1">
-                    <i class="fas fa-calculator mr-2"></i>計算結果
-                </button>
-                <button id="clear-input-btn" class="btn btn-secondary flex-1">
-                    <i class="fas fa-eraser mr-2"></i>清除
-                </button>
+        <!-- Expression, Calculation and Mode Selection -->
+        <div class="flex flex-col md:flex-row gap-4 mb-8 items-center md:items-start">
+            <div class="bg-gray-100 p-6 rounded-2xl flex-1 w-full">
+                <h2 class="text-2xl font-bold text-gray-700 mb-4 text-center">組合你的算式</h2>
+                <input id="expression-input" type="text" class="w-full px-4 py-3 text-center text-xl rounded-xl border-2 border-gray-300 focus:border-blue-500 focus:outline-none mb-4" placeholder="例如：5 × 4 - |3 - 2|" readonly>
+                <div class="flex gap-4">
+                    <button id="calculate-btn" class="btn btn-primary flex-1">
+                        <i class="fas fa-calculator mr-2"></i>計算結果
+                    </button>
+                    <button id="clear-input-btn" class="btn btn-secondary flex-1">
+                        <i class="fas fa-eraser mr-2"></i>清除
+                    </button>
+                </div>
+            </div>
+            <div class="flex flex-col gap-4">
+                <button id="mode-large-btn" class="btn btn-toggle active">比大 (目標: 20)</button>
+                <button id="mode-small-btn" class="btn btn-toggle">比小 (目標: 1)</button>
             </div>
         </div>
         
         <!-- AI Solution and Result section -->
         <div id="result-and-ai-container">
             <!-- Mode selection buttons -->
-            <div class="flex flex-col md:flex-row gap-4 justify-center mb-4">
-                <button id="mode-large-btn" class="btn btn-toggle active">比大 (目標: 20)</button>
-                <button id="mode-small-btn" class="btn btn-toggle">比小 (目標: 1)</button>
-                <button id="ai-solve-btn" class="btn btn-primary disabled">
+            <div class="flex justify-center mb-4">
+                <button id="ai-solve-btn" class="btn btn-primary disabled flex-1 max-w-xs">
                     <i class="fas fa-brain mr-2"></i>AI 解答
                 </button>
             </div>
@@ -184,7 +188,7 @@
         let drawnNumbers = [];
         let cardsDrawnThisRound = 0;
         let absUsedLastRound = false;
-        let disabledSymbol = null; // This will now only affect the next round
+        let disabledSymbol = null;
         let isDiscardingSymbol = false;
         let targetMode = 'large';
         
@@ -223,11 +227,7 @@
 
         // Helper function to insert text at the cursor position
         function insertTextAtCursor(input, textToInsert) {
-            const start = input.selectionStart;
-            const end = input.selectionEnd;
-            input.value = input.value.substring(0, start) + textToInsert + input.value.substring(end);
-            input.focus();
-            input.setSelectionRange(start + textToInsert.length, start + textToInsert.length);
+            input.value += textToInsert;
         }
 
         function createNumberDeck() {
@@ -495,8 +495,6 @@
 
         // AI Solution Logic
         aiSolveBtn.addEventListener('click', () => {
-            // The AI button is already disabled if it's not a valid state for calculation,
-            // so we can directly proceed with solving.
             if (aiSolveBtn.classList.contains('disabled')) {
                 return;
             }
@@ -510,7 +508,6 @@
                 }
             }
             
-            // Check if any numbers have been drawn
             if (drawnNumbers.length === 0) {
                 showMessage('請先抽牌，AI 才能為您解答！');
                 return;
@@ -531,7 +528,6 @@
                     const distance20 = Math.abs(value - 20);
                     const distance1 = Math.abs(value - 1);
 
-                    // Check for closest to 20
                     if (distance20 < minDistance20) {
                         minDistance20 = distance20;
                         bestResults20 = [{ expression: exp, value: value, distance: distance20 }];
@@ -539,7 +535,6 @@
                         bestResults20.push({ expression: exp, value: value, distance: distance20 });
                     }
 
-                    // Check for closest to 1
                     if (distance1 < minDistance1) {
                         minDistance1 = distance1;
                         bestResults1 = [{ expression: exp, value: value, distance: distance1 }];
@@ -547,8 +542,7 @@
                         bestResults1.push({ expression: exp, value: value, distance: distance1 });
                     }
                     
-                    // Also check with absolute value wrapper
-                    if (exp.includes('|') === false) { // Don't double wrap if already has |
+                    if (exp.includes('|') === false) {
                       const absExp = `|${exp}|`;
                       const absValue = Math.abs(value);
                       const absDistance20 = Math.abs(absValue - 20);
@@ -570,16 +564,14 @@
                     }
                     
                 } catch (e) {
-                    // Ignore invalid expressions (e.g., division by zero)
+                    // Ignore invalid expressions
                 }
             });
 
-            // Select the simplest expression from the best results
             let finalBest20 = bestResults20.sort((a, b) => a.expression.length - b.expression.length)[0];
             let finalBest1 = bestResults1.sort((a, b) => a.expression.length - b.expression.length)[0];
 
 
-            // Display AI's best solutions
             if (finalBest20) {
                 aiExp20.textContent = finalBest20.expression;
                 aiVal20.textContent = `結果: ${finalBest20.value} (距離 20 為 ${finalBest20.distance})`;
@@ -616,36 +608,25 @@
             return p(arr);
         }
 
-        // A function to generate all possible valid expressions
+        // A function to generate all possible valid expressions without parentheses
         function generateAllExpressions(numbers, symbols) {
             const allExpressions = new Set();
             const numberPerms = permute(numbers);
             
-            // For 3-card combinations
             if (numbers.length === 3) {
                 numberPerms.forEach(p => {
                     symbols.forEach(op1 => {
                         symbols.forEach(op2 => {
-                            allExpressions.add(`( ${p[0]} ${op1} ${p[1]} ) ${op2} ${p[2]}`);
-                            allExpressions.add(`${p[0]} ${op1} ( ${p[1]} ${op2} ${p[2]} )`);
-                            // Also add simple, no-parentheses expressions
                             allExpressions.add(`${p[0]} ${op1} ${p[1]} ${op2} ${p[2]}`);
                         });
                     });
                 });
             }
-            // For 4-card combinations
             else if (numbers.length === 4) {
                 numberPerms.forEach(p => {
                     symbols.forEach(op1 => {
                         symbols.forEach(op2 => {
                             symbols.forEach(op3 => {
-                                allExpressions.add(`( ( ${p[0]} ${op1} ${p[1]} ) ${op2} ${p[2]} ) ${op3} ${p[3]}`);
-                                allExpressions.add(`( ${p[0]} ${op1} ( ${p[1]} ${op2} ${p[2]} ) ) ${op3} ${p[3]}`);
-                                allExpressions.add(`( ${p[0]} ${op1} ${p[1]} ) ${op2} ( ${p[2]} ${op3} ${p[3]} )`);
-                                allExpressions.add(`${p[0]} ${op1} ( ( ${p[1]} ${op2} ${p[2]} ) ${op3} ${p[3]} )`);
-                                allExpressions.add(`${p[0]} ${op1} ( ${p[1]} ${op2} ( ${p[2]} ${op3} ${p[3]} ) )`);
-                                // Also add simple, no-parentheses expressions
                                 allExpressions.add(`${p[0]} ${op1} ${p[1]} ${op2} ${p[2]} ${op3} ${p[3]}`);
                             });
                         });
@@ -661,7 +642,7 @@
             numberDeck = createNumberDeck();
             setupSymbolCardListeners();
             updateDrawCountInfo();
-            updateModeUI(); // Set initial UI mode
+            updateModeUI();
         });
     </script>
 </body>
