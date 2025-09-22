@@ -184,7 +184,7 @@
         let drawnNumbers = [];
         let cardsDrawnThisRound = 0;
         let absUsedLastRound = false;
-        let disabledSymbol = null;
+        let disabledSymbol = null; // This will now only affect the next round
         let isDiscardingSymbol = false;
         let targetMode = 'large';
         
@@ -192,7 +192,7 @@
         const drawnNumbersContainer = document.getElementById('drawn-numbers-container');
         const drawCountInfo = document.getElementById('draw-count-info');
         const symbolCardsContainer = document.getElementById('symbol-cards-container');
-        const symbolCards = document.querySelectorAll('#symbol-cards-container .card');
+        let symbolCards = document.querySelectorAll('#symbol-cards-container .card');
         const expressionInput = document.getElementById('expression-input');
         const drawNumberBtn = document.getElementById('draw-number-btn');
         const nextRoundBtn = document.getElementById('next-round-btn');
@@ -214,7 +214,7 @@
         const aiVal20 = document.getElementById('ai-val-20');
         const aiExp1 = document.getElementById('ai-exp-1');
         const aiVal1 = document.getElementById('ai-val-1');
-
+        
         // Helper functions
         function showMessage(text) {
             messageText.textContent = text;
@@ -279,7 +279,8 @@
                 // Clear any existing listeners to prevent duplication
                 const newCard = card.cloneNode(true);
                 card.parentNode.replaceChild(newCard, card);
-
+                symbolCards = document.querySelectorAll('#symbol-cards-container .card'); // Update the NodeList
+                
                 // Add new listeners
                 newCard.addEventListener('click', () => {
                     if (isDiscardingSymbol) {
@@ -291,7 +292,6 @@
                         // Handle discard action
                         disabledSymbol = id;
                         discardPrompt.style.display = 'none';
-                        newCard.classList.add('disabled');
                         isDiscardingSymbol = false;
                         nextRoundBtn.style.display = 'inline-block';
                         showMessage(`符號 "${value}" 已被捨棄，下回合無法使用。`);
@@ -453,15 +453,18 @@
             clearInputBtn.classList.remove('disabled');
             aiSolveBtn.classList.add('disabled'); // Disable AI button for the new round
 
-            // Apply disabled symbol from last round
+            // Re-enable all symbols for the new round
             symbolCards.forEach(card => {
-                if (card.getAttribute('data-id') === disabledSymbol) {
-                    card.classList.add('disabled');
-                } else {
-                    card.classList.remove('disabled');
-                }
+                card.classList.remove('disabled');
             });
-
+            // Apply new disabled symbol from last round, if any
+            if (disabledSymbol) {
+                 const symbolToDisable = document.querySelector(`[data-id="${disabledSymbol}"]`);
+                 if (symbolToDisable) {
+                     symbolToDisable.classList.add('disabled');
+                 }
+            }
+            
             // Reset drawn number cards for next round
             drawnNumbersContainer.innerHTML = '';
             updateDrawCountInfo();
@@ -500,7 +503,8 @@
 
             const availableSymbols = ['+', '-', '×', '÷'];
             if (disabledSymbol) {
-                const disabledIndex = availableSymbols.indexOf(symbolCards[Array.from(symbolCards).findIndex(c => c.getAttribute('data-id') === disabledSymbol)].getAttribute('data-value'));
+                const disabledSymbolValue = document.querySelector(`[data-id="${disabledSymbol}"]`).getAttribute('data-value');
+                const disabledIndex = availableSymbols.indexOf(disabledSymbolValue);
                 if (disabledIndex > -1) {
                     availableSymbols.splice(disabledIndex, 1);
                 }
@@ -544,23 +548,25 @@
                     }
                     
                     // Also check with absolute value wrapper
-                    const absExp = `|${exp}|`;
-                    const absValue = Math.abs(value);
-                    const absDistance20 = Math.abs(absValue - 20);
-                    const absDistance1 = Math.abs(absValue - 1);
-
-                    if (absDistance20 < minDistance20) {
-                        minDistance20 = absDistance20;
-                        bestResults20 = [{ expression: absExp, value: absValue, distance: absDistance20 }];
-                    } else if (absDistance20 === minDistance20) {
-                        bestResults20.push({ expression: absExp, value: absValue, distance: absDistance20 });
-                    }
-
-                    if (absDistance1 < minDistance1) {
-                        minDistance1 = absDistance1;
-                        bestResults1 = [{ expression: absExp, value: absValue, distance: absDistance1 }];
-                    } else if (absDistance1 === minDistance1) {
-                        bestResults1.push({ expression: absExp, value: absValue, distance: absDistance1 });
+                    if (exp.includes('|') === false) { // Don't double wrap if already has |
+                      const absExp = `|${exp}|`;
+                      const absValue = Math.abs(value);
+                      const absDistance20 = Math.abs(absValue - 20);
+                      const absDistance1 = Math.abs(absValue - 1);
+  
+                      if (absDistance20 < minDistance20) {
+                          minDistance20 = absDistance20;
+                          bestResults20 = [{ expression: absExp, value: absValue, distance: absDistance20 }];
+                      } else if (absDistance20 === minDistance20) {
+                          bestResults20.push({ expression: absExp, value: absValue, distance: absDistance20 });
+                      }
+  
+                      if (absDistance1 < minDistance1) {
+                          minDistance1 = absDistance1;
+                          bestResults1 = [{ expression: absExp, value: absValue, distance: absDistance1 }];
+                      } else if (absDistance1 === minDistance1) {
+                          bestResults1.push({ expression: absExp, value: absValue, distance: absDistance1 });
+                      }
                     }
                     
                 } catch (e) {
