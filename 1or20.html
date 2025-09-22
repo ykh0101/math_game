@@ -191,7 +191,7 @@
         let drawnNumbers = [];
         let cardsDrawnThisRound = 0;
         let absUsedLastRound = false;
-        let disabledSymbol = null;
+        let disabledSymbol = null; // Stores the ID of the symbol to be disabled next round
         let isDiscardingSymbol = false;
         let targetMode = 'large';
         
@@ -228,11 +228,6 @@
             messageBox.style.display = 'flex';
         }
 
-        // Helper function to insert text at the cursor position
-        function insertTextAtCursor(input, textToInsert) {
-            input.value += textToInsert;
-        }
-
         function createNumberDeck() {
             const newDeck = [];
             for (let i = 0; i <= 9; i++) {
@@ -260,14 +255,55 @@
             card.setAttribute('data-value', value);
             card.setAttribute('data-used', 'false'); // Track if the card has been used
             card.addEventListener('click', () => {
-                // Number cards can only be used once
-                if (type === 'number' && card.getAttribute('data-used') === 'true') {
-                    return;
-                }
-                insertTextAtCursor(expressionInput, `${card.getAttribute('data-value')}`);
                 if (type === 'number') {
+                    // Check if the card is already used
+                    if (card.getAttribute('data-used') === 'true') {
+                        return;
+                    }
+
+                    // Check if the last character is also a number
+                    const currentExp = expressionInput.value.trim();
+                    const lastChar = currentExp.charAt(currentExp.length - 1);
+                    const isLastCharNumber = !isNaN(parseInt(lastChar, 10)) && isFinite(lastChar);
+                    
+                    if (isLastCharNumber) {
+                        showMessage('數字牌不能並排放置！');
+                        // Do not change the card state, it stays "unused"
+                        return;
+                    }
+                    
+                    // If the check passes, add to expression and disable the card
+                    expressionInput.value += `${card.getAttribute('data-value')}`;
                     card.classList.add('disabled');
                     card.setAttribute('data-used', 'true');
+
+                } else { // Symbol card click logic
+                    if (isDiscardingSymbol) {
+                        if (card.getAttribute('data-id') === 'abs') {
+                            showMessage('絕對值符號不能被捨棄！');
+                            return;
+                        }
+                        
+                        // Handle discard action
+                        disabledSymbol = card.getAttribute('data-id');
+                        discardPrompt.style.display = 'none';
+                        isDiscardingSymbol = false;
+                        nextRoundBtn.style.display = 'inline-block';
+                        showMessage(`符號 "${card.getAttribute('data-value')}" 已被捨棄，下回合無法使用。`);
+                        calculateBtn.classList.add('disabled');
+                        clearInputBtn.classList.add('disabled');
+                    } else {
+                        // Handle regular input action
+                        if (card.classList.contains('disabled')) {
+                            showMessage(`此符號本回合無法使用！`);
+                            return;
+                        }
+                        if (card.getAttribute('data-id') === 'abs') {
+                            expressionInput.value += '|';
+                        } else {
+                            expressionInput.value += ` ${card.getAttribute('data-value')} `;
+                        }
+                    }
                 }
             });
             drawnNumbersContainer.appendChild(card);
@@ -276,40 +312,36 @@
         // This function adds the event listeners to the symbol cards
         function setupSymbolCardListeners() {
             symbolCards.forEach(card => {
-                const value = card.getAttribute('data-value');
-                const id = card.getAttribute('data-id');
-                
-                // Clear any existing listeners to prevent duplication
                 const newCard = card.cloneNode(true);
                 card.parentNode.replaceChild(newCard, card);
-                symbolCards = document.querySelectorAll('#symbol-cards-container .card'); // Update the NodeList
+                symbolCards = document.querySelectorAll('#symbol-cards-container .card');
                 
-                // Add new listeners
+                // Add new listeners for symbol cards only
                 newCard.addEventListener('click', () => {
+                    const value = newCard.getAttribute('data-value');
+                    const id = newCard.getAttribute('data-id');
+
                     if (isDiscardingSymbol) {
                         if (id === 'abs') {
                             showMessage('絕對值符號不能被捨棄！');
                             return;
                         }
-                        
-                        // Handle discard action
                         disabledSymbol = id;
                         discardPrompt.style.display = 'none';
                         isDiscardingSymbol = false;
                         nextRoundBtn.style.display = 'inline-block';
                         showMessage(`符號 "${value}" 已被捨棄，下回合無法使用。`);
                         calculateBtn.classList.add('disabled');
-                        clearInputBtn.classList.add('disabled'); // Disable clear button after discarding
+                        clearInputBtn.classList.add('disabled');
                     } else {
-                        // Handle regular input action
                         if (newCard.classList.contains('disabled')) {
                             showMessage(`此符號本回合無法使用！`);
                             return;
                         }
                         if (id === 'abs') {
-                            insertTextAtCursor(expressionInput, '|');
+                            expressionInput.value += '|';
                         } else {
-                            insertTextAtCursor(expressionInput, ` ${value} `);
+                            expressionInput.value += ` ${value} `;
                         }
                     }
                 });
@@ -373,8 +405,9 @@
             }
 
             const usedMultiply = expression.includes('×');
-            absUsedLastRound = (expression.match(/\|/g) || []).length % 2 === 0 && expression.includes('|');
-            
+            const absCount = (expression.match(/\|/g) || []).length;
+            absUsedLastRound = absCount > 0 && absCount % 2 === 0;
+
             // Check for invalid characters first
             if (/[^0-9\+\-\*\/ ().×÷|]/.test(expression)) {
                 showMessage("算式包含無效字元！");
@@ -404,19 +437,21 @@
 
                 // Enable AI solve button after a valid calculation
                 aiSolveBtn.classList.remove('disabled');
-
+                
+                // New logic for penalty
                 if (usedMultiply) {
                     discardPrompt.style.display = 'block';
                     isDiscardingSymbol = true;
-                    drawNumberBtn.classList.add('disabled');
-                    calculateBtn.classList.add('disabled');
-                    clearInputBtn.classList.add('disabled');
                 } else {
+                    // If no multiplication used, reset penalty for next round
+                    disabledSymbol = null;
                     nextRoundBtn.style.display = 'inline-block';
-                    drawNumberBtn.classList.add('disabled');
-                    calculateBtn.classList.add('disabled');
-                    clearInputBtn.classList.add('disabled');
                 }
+                
+                drawNumberBtn.classList.add('disabled');
+                calculateBtn.classList.add('disabled');
+                clearInputBtn.classList.add('disabled');
+
             } catch (e) {
                 showMessage("無效的算式，請檢查格式。");
             }
@@ -435,6 +470,16 @@
             }
         });
 
+        function applySymbolPenalty() {
+            symbolCards.forEach(card => card.classList.remove('disabled'));
+            if (disabledSymbol) {
+                const symbolToDisable = document.querySelector(`[data-id="${disabledSymbol}"]`);
+                if (symbolToDisable) {
+                    symbolToDisable.classList.add('disabled');
+                }
+            }
+        }
+        
         // Start next round
         nextRoundBtn.addEventListener('click', () => {
             cardsDrawnThisRound = 0;
@@ -447,19 +492,9 @@
             drawNumberBtn.classList.remove('disabled');
             calculateBtn.classList.remove('disabled');
             clearInputBtn.classList.remove('disabled');
-            aiSolveBtn.classList.add('disabled'); // Disable AI button for the new round
-
-            // Re-enable all symbols for the new round
-            symbolCards.forEach(card => {
-                card.classList.remove('disabled');
-            });
-            // Apply new disabled symbol from last round, if any
-            if (disabledSymbol) {
-                 const symbolToDisable = document.querySelector(`[data-id="${disabledSymbol}"]`);
-                 if (symbolToDisable) {
-                     symbolToDisable.classList.add('disabled');
-                 }
-            }
+            aiSolveBtn.classList.add('disabled');
+            
+            applySymbolPenalty(); // Apply the new penalty state
             
             // Reset drawn number cards for next round
             drawnNumbersContainer.innerHTML = '';
@@ -501,10 +536,13 @@
 
             const availableSymbols = ['+', '-', '×', '÷'];
             if (disabledSymbol) {
-                const disabledSymbolValue = document.querySelector(`[data-id="${disabledSymbol}"]`).getAttribute('data-value');
-                const disabledIndex = availableSymbols.indexOf(disabledSymbolValue);
-                if (disabledIndex > -1) {
-                    availableSymbols.splice(disabledIndex, 1);
+                const symbolToDisable = document.querySelector(`[data-id="${disabledSymbol}"]`);
+                if (symbolToDisable) {
+                    const disabledSymbolValue = symbolToDisable.getAttribute('data-value');
+                    const disabledIndex = availableSymbols.indexOf(disabledSymbolValue);
+                    if (disabledIndex > -1) {
+                        availableSymbols.splice(disabledIndex, 1);
+                    }
                 }
             }
             
