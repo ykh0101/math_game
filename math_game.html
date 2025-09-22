@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>20點數學遊戲</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+        }
+        .card {
+            font-size: 1.5rem;
+            width: 60px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease-in-out;
+            cursor: pointer;
+            user-select: none;
+        }
+        .card:hover:not(.disabled) {
+            transform: translateY(-4px);
+        }
+        .card.disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .number-card {
+            background-color: #fff;
+            color: #3b82f6;
+            border: 2px solid #3b82f6;
+        }
+        .symbol-card {
+            background-color: #3b82f6;
+            color: #fff;
+            border: 2px solid #3b82f6;
+        }
+        .card-container {
+            min-height: 100px;
+        }
+        .btn {
+            @apply px-6 py-3 rounded-xl font-semibold transition-transform duration-200 transform;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .btn:not(.disabled):hover {
+            transform: scale(1.05);
+        }
+        .btn.disabled {
+            @apply opacity-50 cursor-not-allowed;
+            transform: none;
+        }
+        .btn-primary {
+            @apply bg-blue-500 text-white hover:bg-blue-600;
+        }
+        .btn-secondary {
+            @apply bg-gray-300 text-gray-800 hover:bg-gray-400;
+        }
+        .btn-toggle.active {
+            @apply bg-green-500 text-white hover:bg-green-600;
+        }
+        .btn-toggle:not(.active) {
+            @apply bg-gray-300 text-gray-800 hover:bg-gray-400;
+        }
+    </style>
+</head>
+<body class="p-6 md:p-12">
+    <div class="max-w-4xl mx-auto bg-white rounded-3xl shadow-2xl p-6 md:p-12 border-4 border-blue-500">
+        <h1 class="text-4xl md:text-5xl font-extrabold text-center text-blue-800 mb-2">20點數學遊戲</h1>
+        <p class="text-lg text-center text-gray-600 mb-8">使用抽到的牌來組合算式，並讓結果盡可能接近目標數字。</p>
+
+        <!-- Buttons to draw cards -->
+        <div class="flex flex-col md:flex-row gap-4 justify-center mb-8">
+            <button id="draw-number-btn" class="btn btn-primary flex-1">
+                <i class="fas fa-dice mr-2"></i>抽數字牌
+            </button>
+            <button id="next-round-btn" class="btn btn-secondary flex-1" style="display: none;">
+                <i class="fas fa-arrow-right mr-2"></i>開始下回合
+            </button>
+            <button id="reset-game-btn" class="btn btn-secondary flex-1">
+                <i class="fas fa-redo-alt mr-2"></i>重新開始
+            </button>
+        </div>
+
+        <!-- Drawn cards display -->
+        <div class="bg-gray-100 p-6 rounded-2xl mb-4">
+            <h2 class="text-2xl font-bold text-gray-700 mb-4 text-center">已抽到的數字牌</h2>
+            <div id="drawn-numbers-container" class="flex flex-wrap gap-4 justify-center card-container">
+                <!-- Drawn number cards will be added here dynamically -->
+            </div>
+            <p id="draw-count-info" class="text-center text-sm text-gray-500 mt-2">本回合需抽 3 張牌 (已抽 0 張)</p>
+        </div>
+        
+        <div class="bg-gray-100 p-6 rounded-2xl mb-8">
+            <h2 class="text-2xl font-bold text-gray-700 mb-4 text-center">符號牌</h2>
+            <div id="symbol-cards-container" class="flex flex-wrap gap-4 justify-center card-container">
+                <div class="card symbol-card" data-value="+" data-id="plus">+</div>
+                <div class="card symbol-card" data-value="-" data-id="minus">-</div>
+                <div class="card symbol-card" data-value="×" data-id="multiply">×</div>
+                <div class="card symbol-card" data-value="÷" data-id="divide">÷</div>
+                <div class="card symbol-card" data-value="|" data-id="abs">| |</div>
+            </div>
+        </div>
+
+        <!-- Expression and Calculation -->
+        <div class="bg-gray-100 p-6 rounded-2xl mb-8">
+            <h2 class="text-2xl font-bold text-gray-700 mb-4 text-center">組合你的算式</h2>
+            <input id="expression-input" type="text" class="w-full px-4 py-3 text-center text-xl rounded-xl border-2 border-gray-300 focus:border-blue-500 focus:outline-none mb-4" placeholder="例如：( 5 + 3 ) * 2 - |1|">
+            <div class="flex gap-4">
+                <button id="calculate-btn" class="btn btn-primary flex-1">
+                    <i class="fas fa-calculator mr-2"></i>計算結果
+                </button>
+                <button id="clear-input-btn" class="btn btn-secondary flex-1">
+                    <i class="fas fa-eraser mr-2"></i>清除
+                </button>
+            </div>
+        </div>
+        
+        <!-- AI Solution and Result section -->
+        <div id="result-and-ai-container">
+            <!-- Mode selection buttons -->
+            <div class="flex flex-col md:flex-row gap-4 justify-center mb-4">
+                <button id="mode-large-btn" class="btn btn-toggle active">比大 (目標: 20)</button>
+                <button id="mode-small-btn" class="btn btn-toggle">比小 (目標: 1)</button>
+                <button id="ai-solve-btn" class="btn btn-primary disabled">
+                    <i class="fas fa-brain mr-2"></i>AI 解答
+                </button>
+            </div>
+            
+            <!-- Result display -->
+            <div id="result-display" class="bg-gray-100 p-6 rounded-2xl text-center font-bold" style="display: none;">
+                <h2 class="text-2xl text-gray-700 mb-4">結果</h2>
+                <div id="final-result" class="text-5xl text-blue-600 mb-4"></div>
+                <p class="text-xl text-gray-800">
+                    <span id="target-info"></span><br>
+                    距離目標的距離：<span id="distance-info" class="text-red-500 ml-2"></span>
+                </p>
+            </div>
+
+            <!-- AI Solution Display -->
+            <div id="ai-solution-display" class="bg-gray-100 p-6 rounded-2xl text-center font-bold mt-4" style="display: none;">
+                <h2 class="text-2xl text-gray-700 mb-4">AI 最佳解答</h2>
+                <div class="space-y-4">
+                    <div id="ai-solution-20" class="border border-green-500 p-4 rounded-xl">
+                        <p class="text-green-600 text-lg font-bold mb-2">最接近 20 的算式：</p>
+                        <p id="ai-exp-20" class="text-xl mb-1"></p>
+                        <p id="ai-val-20" class="text-base text-gray-600"></p>
+                    </div>
+                    <div id="ai-solution-1" class="border border-red-500 p-4 rounded-xl">
+                        <p class="text-red-600 text-lg font-bold mb-2">最接近 1 的算式：</p>
+                        <p id="ai-exp-1" class="text-xl mb-1"></p>
+                        <p id="ai-val-1" class="text-base text-gray-600"></p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Discard Symbol message -->
+            <div id="discard-symbol-prompt" class="bg-yellow-100 p-6 rounded-2xl text-center mb-4 border border-yellow-400" style="display: none;">
+                <p class="text-xl text-yellow-800 font-bold mb-2">使用了乘法！</p>
+                <p class="text-lg text-yellow-800">請點擊一個符號牌，讓它在下一回合無法使用。</p>
+            </div>
+        </div>
+        
+        <!-- Message box for alerts -->
+        <div id="message-box" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" style="display: none;">
+            <div class="bg-white p-6 rounded-xl shadow-lg max-w-sm w-full text-center">
+                <p id="message-text" class="mb-4 text-gray-800 text-lg"></p>
+                <button onclick="document.getElementById('message-box').style.display='none';" class="btn btn-primary w-full">好的</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Game state variables
+        let numberDeck = [];
+        let drawnNumbers = [];
+        let cardsDrawnThisRound = 0;
+        let absUsedLastRound = false;
+        let disabledSymbol = null;
+        let isDiscardingSymbol = false;
+        let targetMode = 'large';
+        
+        // DOM elements
+        const drawnNumbersContainer = document.getElementById('drawn-numbers-container');
+        const drawCountInfo = document.getElementById('draw-count-info');
+        const symbolCardsContainer = document.getElementById('symbol-cards-container');
+        const symbolCards = document.querySelectorAll('#symbol-cards-container .card');
+        const expressionInput = document.getElementById('expression-input');
+        const drawNumberBtn = document.getElementById('draw-number-btn');
+        const nextRoundBtn = document.getElementById('next-round-btn');
+        const calculateBtn = document.getElementById('calculate-btn');
+        const clearInputBtn = document.getElementById('clear-input-btn');
+        const resetGameBtn = document.getElementById('reset-game-btn');
+        const resultDisplay = document.getElementById('result-display');
+        const discardPrompt = document.getElementById('discard-symbol-prompt');
+        const finalResult = document.getElementById('final-result');
+        const targetInfo = document.getElementById('target-info');
+        const distanceInfo = document.getElementById('distance-info');
+        const modeLargeBtn = document.getElementById('mode-large-btn');
+        const modeSmallBtn = document.getElementById('mode-small-btn');
+        const messageBox = document.getElementById('message-box');
+        const messageText = document.getElementById('message-text');
+        const aiSolveBtn = document.getElementById('ai-solve-btn');
+        const aiSolutionDisplay = document.getElementById('ai-solution-display');
+        const aiExp20 = document.getElementById('ai-exp-20');
+        const aiVal20 = document.getElementById('ai-val-20');
+        const aiExp1 = document.getElementById('ai-exp-1');
+        const aiVal1 = document.getElementById('ai-val-1');
+
+        // Helper functions
+        function showMessage(text) {
+            messageText.textContent = text;
+            messageBox.style.display = 'flex';
+        }
+
+        // Helper function to insert text at the cursor position
+        function insertTextAtCursor(input, textToInsert) {
+            const start = input.selectionStart;
+            const end = input.selectionEnd;
+            input.value = input.value.substring(0, start) + textToInsert + input.value.substring(end);
+            input.focus();
+            input.setSelectionRange(start + textToInsert.length, start + textToInsert.length);
+        }
+
+        function createNumberDeck() {
+            const newDeck = [];
+            for (let i = 0; i <= 9; i++) {
+                for (let j = 0; j < 4; j++) {
+                    newDeck.push(i);
+                }
+            }
+            return newDeck;
+        }
+
+        function updateDrawCountInfo() {
+            const maxCards = absUsedLastRound ? 4 : 3;
+            drawCountInfo.textContent = `本回合需抽 ${maxCards} 張牌 (已抽 ${cardsDrawnThisRound} 張)`;
+            if (cardsDrawnThisRound >= maxCards) {
+                drawNumberBtn.classList.add('disabled');
+            } else {
+                drawNumberBtn.classList.remove('disabled');
+            }
+        }
+
+        function addCardToDisplay(value, type) {
+            const card = document.createElement('div');
+            card.className = `card ${type}-card`;
+            card.textContent = value;
+            card.setAttribute('data-value', value);
+            card.setAttribute('data-used', 'false'); // Track if the card has been used
+            card.addEventListener('click', () => {
+                // Number cards can only be used once
+                if (type === 'number' && card.getAttribute('data-used') === 'true') {
+                    return;
+                }
+                insertTextAtCursor(expressionInput, `${card.getAttribute('data-value')}`);
+                if (type === 'number') {
+                    card.classList.add('disabled');
+                    card.setAttribute('data-used', 'true');
+                }
+            });
+            drawnNumbersContainer.appendChild(card);
+        }
+        
+        // This function adds the event listeners to the symbol cards
+        function setupSymbolCardListeners() {
+            symbolCards.forEach(card => {
+                const value = card.getAttribute('data-value');
+                const id = card.getAttribute('data-id');
+                
+                // Clear any existing listeners to prevent duplication
+                const newCard = card.cloneNode(true);
+                card.parentNode.replaceChild(newCard, card);
+
+                // Add new listeners
+                newCard.addEventListener('click', () => {
+                    if (isDiscardingSymbol) {
+                        if (id === 'abs') {
+                            showMessage('絕對值符號不能被捨棄！');
+                            return;
+                        }
+                        
+                        // Handle discard action
+                        disabledSymbol = id;
+                        discardPrompt.style.display = 'none';
+                        newCard.classList.add('disabled');
+                        isDiscardingSymbol = false;
+                        nextRoundBtn.style.display = 'inline-block';
+                        showMessage(`符號 "${value}" 已被捨棄，下回合無法使用。`);
+                        calculateBtn.classList.add('disabled');
+                        clearInputBtn.classList.add('disabled'); // Disable clear button after discarding
+                    } else {
+                        // Handle regular input action
+                        if (newCard.classList.contains('disabled')) {
+                            showMessage(`此符號本回合無法使用！`);
+                            return;
+                        }
+                        if (id === 'abs') {
+                            insertTextAtCursor(expressionInput, '|');
+                        } else {
+                            insertTextAtCursor(expressionInput, ` ${value} `);
+                        }
+                    }
+                });
+            });
+        }
+
+        function updateModeUI() {
+            if (targetMode === 'large') {
+                modeLargeBtn.classList.add('active');
+                modeSmallBtn.classList.remove('active');
+                targetInfo.textContent = '目標：20';
+            } else {
+                modeSmallBtn.classList.add('active');
+                modeLargeBtn.classList.remove('active');
+                targetInfo.textContent = '目標：1';
+            }
+        }
+
+        // Draw a number card from the deck
+        drawNumberBtn.addEventListener('click', () => {
+            const maxCards = absUsedLastRound ? 4 : 3;
+            if (cardsDrawnThisRound >= maxCards) {
+                showMessage(`本回合最多只能抽 ${maxCards} 張數字牌！`);
+                return;
+            }
+            if (numberDeck.length === 0) {
+                showMessage("數字牌已抽完，請重置遊戲！");
+                return;
+            }
+            const randomIndex = Math.floor(Math.random() * numberDeck.length);
+            const drawnNumber = numberDeck.splice(randomIndex, 1)[0];
+            drawnNumbers.push(drawnNumber);
+            addCardToDisplay(drawnNumber, 'number');
+            cardsDrawnThisRound++;
+            updateDrawCountInfo();
+        });
+
+        // Handle expression calculation
+        calculateBtn.addEventListener('click', () => {
+            const maxCards = absUsedLastRound ? 4 : 3;
+            if (cardsDrawnThisRound !== maxCards) {
+                showMessage(`本回合需要抽滿 ${maxCards} 張牌才能進行計算！`);
+                return;
+            }
+            
+            // Check if all drawn cards have been used in the expression
+            const drawnCardsElements = Array.from(drawnNumbersContainer.querySelectorAll('.number-card'));
+            const allCardsUsed = drawnCardsElements.every(card => card.getAttribute('data-used') === 'true');
+            if (!allCardsUsed) {
+                showMessage('請使用所有抽到的數字牌！');
+                return;
+            }
+
+            let expression = expressionInput.value.trim();
+            if (!expression) {
+                showMessage("請輸入算式！");
+                return;
+            }
+
+            const usedMultiply = expression.includes('×');
+            absUsedLastRound = (expression.match(/\|/g) || []).length % 2 === 0 && expression.includes('|');
+            
+            // Check for invalid characters first
+            if (/[^0-9\+\-\*\/ ().×÷|]/.test(expression)) {
+                showMessage("算式包含無效字元！");
+                return;
+            }
+
+            // Replace symbols for evaluation
+            expression = expression.replace(/×/g, '*').replace(/÷/g, '/');
+            
+            // Replace |...| with Math.abs(...)
+            const absRegex = /\|([^\|]+)\|/g;
+            expression = expression.replace(absRegex, (match, p1) => `Math.abs(${p1})`);
+
+            try {
+                const result = eval(expression);
+                finalResult.textContent = result;
+                
+                // Calculate distance based on mode
+                let distance;
+                if (targetMode === 'large') {
+                    distance = Math.abs(result - 20);
+                } else {
+                    distance = Math.abs(result - 1);
+                }
+                distanceInfo.textContent = distance;
+                resultDisplay.style.display = 'block';
+
+                // Enable AI solve button after a valid calculation
+                aiSolveBtn.classList.remove('disabled');
+
+                if (usedMultiply) {
+                    discardPrompt.style.display = 'block';
+                    isDiscardingSymbol = true;
+                    drawNumberBtn.classList.add('disabled');
+                    calculateBtn.classList.add('disabled');
+                    clearInputBtn.classList.add('disabled');
+                } else {
+                    nextRoundBtn.style.display = 'inline-block';
+                    drawNumberBtn.classList.add('disabled');
+                    calculateBtn.classList.add('disabled');
+                    clearInputBtn.classList.add('disabled');
+                }
+            } catch (e) {
+                showMessage("無效的算式，請檢查格式。");
+            }
+        });
+
+        // Clear input button functionality
+        clearInputBtn.addEventListener('click', () => {
+            if (!clearInputBtn.classList.contains('disabled')) {
+                expressionInput.value = '';
+                // Re-enable all number cards
+                const drawnCardsElements = drawnNumbersContainer.querySelectorAll('.number-card');
+                drawnCardsElements.forEach(card => {
+                    card.classList.remove('disabled');
+                    card.setAttribute('data-used', 'false');
+                });
+            }
+        });
+
+        // Toggle mode buttons
+        modeLargeBtn.addEventListener('click', () => {
+            targetMode = 'large';
+            updateModeUI();
+        });
+        modeSmallBtn.addEventListener('click', () => {
+            targetMode = 'small';
+            updateModeUI();
+        });
+
+        // Start next round
+        nextRoundBtn.addEventListener('click', () => {
+            cardsDrawnThisRound = 0;
+            drawnNumbers = [];
+            expressionInput.value = '';
+            resultDisplay.style.display = 'none';
+            discardPrompt.style.display = 'none';
+            nextRoundBtn.style.display = 'none';
+            aiSolutionDisplay.style.display = 'none';
+            drawNumberBtn.classList.remove('disabled');
+            calculateBtn.classList.remove('disabled');
+            clearInputBtn.classList.remove('disabled');
+            aiSolveBtn.classList.add('disabled'); // Disable AI button for the new round
+
+            // Apply disabled symbol from last round
+            symbolCards.forEach(card => {
+                if (card.getAttribute('data-id') === disabledSymbol) {
+                    card.classList.add('disabled');
+                } else {
+                    card.classList.remove('disabled');
+                }
+            });
+
+            // Reset drawn number cards for next round
+            drawnNumbersContainer.innerHTML = '';
+            updateDrawCountInfo();
+        });
+
+        // Reset the game to a fresh start
+        resetGameBtn.addEventListener('click', () => {
+            numberDeck = createNumberDeck();
+            drawnNumbers = [];
+            cardsDrawnThisRound = 0;
+            absUsedLastRound = false;
+            disabledSymbol = null;
+            isDiscardingSymbol = false;
+            drawnNumbersContainer.innerHTML = '';
+            expressionInput.value = '';
+            resultDisplay.style.display = 'none';
+            discardPrompt.style.display = 'none';
+            nextRoundBtn.style.display = 'none';
+            aiSolutionDisplay.style.display = 'none';
+            drawNumberBtn.classList.remove('disabled');
+            calculateBtn.classList.remove('disabled');
+            clearInputBtn.classList.remove('disabled');
+            aiSolveBtn.classList.add('disabled'); // Disable AI button
+            symbolCards.forEach(card => card.classList.remove('disabled'));
+            updateDrawCountInfo();
+            updateModeUI(); // Reset UI mode
+        });
+
+        // AI Solution Logic
+        aiSolveBtn.addEventListener('click', () => {
+            // The AI button is already disabled if it's not a valid state for calculation,
+            // so we can directly proceed with solving.
+            if (aiSolveBtn.classList.contains('disabled')) {
+                return;
+            }
+
+            const availableSymbols = ['+', '-', '×', '÷'];
+            if (disabledSymbol) {
+                const disabledIndex = availableSymbols.indexOf(symbolCards[Array.from(symbolCards).findIndex(c => c.getAttribute('data-id') === disabledSymbol)].getAttribute('data-value'));
+                if (disabledIndex > -1) {
+                    availableSymbols.splice(disabledIndex, 1);
+                }
+            }
+            
+            // Check if any numbers have been drawn
+            if (drawnNumbers.length === 0) {
+                showMessage('請先抽牌，AI 才能為您解答！');
+                return;
+            }
+
+            const allExpressions = generateAllExpressions(drawnNumbers, availableSymbols);
+            
+            let bestResults20 = [];
+            let bestResults1 = [];
+            let minDistance20 = Infinity;
+            let minDistance1 = Infinity;
+
+            allExpressions.forEach(exp => {
+                try {
+                    const jsExp = exp.replace(/×/g, '*').replace(/÷/g, '/');
+                    const value = eval(jsExp);
+                    
+                    const distance20 = Math.abs(value - 20);
+                    const distance1 = Math.abs(value - 1);
+
+                    // Check for closest to 20
+                    if (distance20 < minDistance20) {
+                        minDistance20 = distance20;
+                        bestResults20 = [{ expression: exp, value: value, distance: distance20 }];
+                    } else if (distance20 === minDistance20) {
+                        bestResults20.push({ expression: exp, value: value, distance: distance20 });
+                    }
+
+                    // Check for closest to 1
+                    if (distance1 < minDistance1) {
+                        minDistance1 = distance1;
+                        bestResults1 = [{ expression: exp, value: value, distance: distance1 }];
+                    } else if (distance1 === minDistance1) {
+                        bestResults1.push({ expression: exp, value: value, distance: distance1 });
+                    }
+                    
+                    // Also check with absolute value wrapper
+                    const absExp = `|${exp}|`;
+                    const absValue = Math.abs(value);
+                    const absDistance20 = Math.abs(absValue - 20);
+                    const absDistance1 = Math.abs(absValue - 1);
+
+                    if (absDistance20 < minDistance20) {
+                        minDistance20 = absDistance20;
+                        bestResults20 = [{ expression: absExp, value: absValue, distance: absDistance20 }];
+                    } else if (absDistance20 === minDistance20) {
+                        bestResults20.push({ expression: absExp, value: absValue, distance: absDistance20 });
+                    }
+
+                    if (absDistance1 < minDistance1) {
+                        minDistance1 = absDistance1;
+                        bestResults1 = [{ expression: absExp, value: absValue, distance: absDistance1 }];
+                    } else if (absDistance1 === minDistance1) {
+                        bestResults1.push({ expression: absExp, value: absValue, distance: absDistance1 });
+                    }
+                    
+                } catch (e) {
+                    // Ignore invalid expressions (e.g., division by zero)
+                }
+            });
+
+            // Select the simplest expression from the best results
+            let finalBest20 = bestResults20.sort((a, b) => a.expression.length - b.expression.length)[0];
+            let finalBest1 = bestResults1.sort((a, b) => a.expression.length - b.expression.length)[0];
+
+
+            // Display AI's best solutions
+            if (finalBest20) {
+                aiExp20.textContent = finalBest20.expression;
+                aiVal20.textContent = `結果: ${finalBest20.value} (距離 20 為 ${finalBest20.distance})`;
+            } else {
+                aiExp20.textContent = '未找到有效算式';
+                aiVal20.textContent = '';
+            }
+            if (finalBest1) {
+                aiExp1.textContent = finalBest1.expression;
+                aiVal1.textContent = `結果: ${finalBest1.value} (距離 1 為 ${finalBest1.distance})`;
+            } else {
+                aiExp1.textContent = '未找到有效算式';
+                aiVal1.textContent = '';
+            }
+
+            aiSolutionDisplay.style.display = 'block';
+        });
+
+        // A function to generate all permutations of an array
+        function permute(arr) {
+            const result = [];
+            function p(arr, memo = []) {
+                if (arr.length === 0) {
+                    result.push(memo);
+                } else {
+                    for (let i = 0; i < arr.length; i++) {
+                        let curr = arr.slice();
+                        let next = curr.splice(i, 1);
+                        p(curr.slice(), memo.concat(next));
+                    }
+                }
+                return result;
+            }
+            return p(arr);
+        }
+
+        // A function to generate all possible valid expressions
+        function generateAllExpressions(numbers, symbols) {
+            const allExpressions = new Set();
+            const numberPerms = permute(numbers);
+            
+            // For 3-card combinations
+            if (numbers.length === 3) {
+                numberPerms.forEach(p => {
+                    symbols.forEach(op1 => {
+                        symbols.forEach(op2 => {
+                            allExpressions.add(`( ${p[0]} ${op1} ${p[1]} ) ${op2} ${p[2]}`);
+                            allExpressions.add(`${p[0]} ${op1} ( ${p[1]} ${op2} ${p[2]} )`);
+                            // Also add simple, no-parentheses expressions
+                            allExpressions.add(`${p[0]} ${op1} ${p[1]} ${op2} ${p[2]}`);
+                        });
+                    });
+                });
+            }
+            // For 4-card combinations
+            else if (numbers.length === 4) {
+                numberPerms.forEach(p => {
+                    symbols.forEach(op1 => {
+                        symbols.forEach(op2 => {
+                            symbols.forEach(op3 => {
+                                allExpressions.add(`( ( ${p[0]} ${op1} ${p[1]} ) ${op2} ${p[2]} ) ${op3} ${p[3]}`);
+                                allExpressions.add(`( ${p[0]} ${op1} ( ${p[1]} ${op2} ${p[2]} ) ) ${op3} ${p[3]}`);
+                                allExpressions.add(`( ${p[0]} ${op1} ${p[1]} ) ${op2} ( ${p[2]} ${op3} ${p[3]} )`);
+                                allExpressions.add(`${p[0]} ${op1} ( ( ${p[1]} ${op2} ${p[2]} ) ${op3} ${p[3]} )`);
+                                allExpressions.add(`${p[0]} ${op1} ( ${p[1]} ${op2} ( ${p[2]} ${op3} ${p[3]} ) )`);
+                                // Also add simple, no-parentheses expressions
+                                allExpressions.add(`${p[0]} ${op1} ${p[1]} ${op2} ${p[2]} ${op3} ${p[3]}`);
+                            });
+                        });
+                    });
+                });
+            }
+
+            return Array.from(allExpressions);
+        }
+
+        // Initial setup
+        document.addEventListener('DOMContentLoaded', () => {
+            numberDeck = createNumberDeck();
+            setupSymbolCardListeners();
+            updateDrawCountInfo();
+            updateModeUI(); // Set initial UI mode
+        });
+    </script>
+</body>
+</html>
