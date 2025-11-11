@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>公因數 & 公倍數 PK 賽</title>
+    <title>公因數 & 公倍數 PK 賽 (V2.3)</title>
 
     <style>
         /* 基本設定 */
@@ -15,14 +15,14 @@
             justify-content: center;
             align-items: flex-start;
             min-height: 100vh;
-            user-select: none; /* 防止文字選取 */
+            /* 【V2.3 修正】 刪除 user-select: none; 這是 iPad 無法拖曳的主因! */
             overflow-x: hidden;
-            margin: 0; /* 確保 body 填滿 */
+            margin: 0; 
         }
 
         .game-container {
             display: flex;
-            flex-wrap: wrap; /* 在小螢幕上換行 */
+            flex-wrap: wrap; 
             justify-content: center;
             gap: 20px;
             padding: 20px;
@@ -69,9 +69,9 @@
 
         /* 玩家區域 */
         .player-zone {
-            flex: 1; /* 均分空間 */
-            min-width: 320px; /* 最小寬度 */
-            max-width: 600px; /* 最大寬度 */
+            flex: 1; 
+            min-width: 320px; 
+            max-width: 600px; 
             background: #ffffff;
             border: 2px solid #b0e0e6;
             border-radius: 15px;
@@ -187,24 +187,25 @@
             font-size: 1.8em;
             font-weight: bold;
             background: none;
-            cursor: grab;
+            /* 【V2.3 修正】 移除 cursor: grab; 它只適用滑鼠 */
             transition: transform 0.2s, box-shadow 0.2s;
             box-shadow: none;
             color: #333;
-            padding: 5px; /* 增加一點內距 */
+            padding: 5px; 
         }
         .card:active {
+            /* :active 狀態在觸控時也會觸發 */
             cursor: grabbing;
             transform: scale(1.05);
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
             background: #f0f0f0;
         }
         .card sup {
-            font-size: 0.6em; /* 次方縮小 */
-            line-height: 0; /* 避免 <sup> 影響行高 */
-            position: relative; /* 使用相對定位微調 */
-            top: -0.7em; /* 往上移 */
-            left: 0.1em; /* 往右移一點點 */
+            font-size: 0.6em; 
+            line-height: 0; 
+            position: relative; 
+            top: -0.7em; 
+            left: 0.1em; 
         }
         .card.dragging {
             opacity: 0.5;
@@ -233,7 +234,7 @@
 
         /* 彈窗 (Modal) 樣式 */
         .modal {
-            display: none; /* 預設隱藏 */
+            display: none; 
             position: fixed;
             z-index: 100;
             left: 0;
@@ -266,15 +267,15 @@
         /* RWD 調整 */
         @media (max-width: 768px) {
             .game-container {
-                flex-direction: column; /* 小螢幕垂直堆疊 */
+                flex-direction: column; 
                 align-items: center;
             }
             .player-zone {
-                width: 95%; /* 小螢幕寬度佔滿 */
-                max-width: unset; /* 取消最大寬度限制 */
+                width: 95%; 
+                max-width: unset; 
             }
             .hand-grid {
-                grid-template-columns: repeat(3, 1fr); /* 手牌改為 3 列 */
+                grid-template-columns: repeat(3, 1fr); 
                 gap: 8px;
             }
             .card {
@@ -295,12 +296,12 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }
         .modal-content.chance-card-content h2 {
-            color: #e65100; /* 深橘色 */
+            color: #e65100; 
             text-shadow: 1px 1px 0px #fff;
         }
         #draw-chance-card-btn,
         #continue-game-btn {
-            background-color: #f57f17; /* 亮橘色 */
+            background-color: #f57f17; 
             color: white;
             font-size: 1.2em;
             padding: 12px 25px;
@@ -312,13 +313,13 @@
         }
         #draw-chance-card-btn:hover,
         #continue-game-btn:hover {
-            background-color: #e65100; /* 深橘色 */
+            background-color: #e65100; 
         }
 
         /* 抽卡結果的樣式 */
         #chance-card-result h3 {
             font-size: 1.5em;
-            color: #d9534f; /* 紅色 */
+            color: #d9534f; 
             margin-top: 20px;
             margin-bottom: 5px;
         }
@@ -395,7 +396,7 @@
     <div id="rules-modal" class="modal">
         <div class="modal-content">
             <span class="close-btn">&times;</span>
-            <h2>遊戲規則 (V2.2)</h2>
+            <h2>遊戲規則 (V2.3)</h2>
             <ol>
                 <li>每回合限時 60 秒，超時該回合 0 分。</li>
                 <li>15 秒內答對得 4 分。</li>
@@ -435,26 +436,24 @@
             // --- 全局變數和 DOM 元素 ---
             const BASES = [2, 3, 5, 7, 11];
             const MAX_POWER = 4;
-            let MAX_ROUNDS = 5; // 預設回合數
-            const TIME_LIMIT_SECONDS = 60; // 時間上限60秒
+            let MAX_ROUNDS = 5; 
+            const TIME_LIMIT_SECONDS = 60; 
             
-            // 建立 21 張卡片的題庫
             const MASTER_CARD_LIST = [];
-            MASTER_CARD_LIST.push({ base: 1, power: 0 }); // 這是 "1" 卡
+            MASTER_CARD_LIST.push({ base: 1, power: 0 }); 
             BASES.forEach(base => {
                 for (let power = 1; power <= MAX_POWER; power++) {
                     MASTER_CARD_LIST.push({ base, power });
                 }
             });
 
-            // 建立機會卡牌庫
             const CHANCE_CARDS = [
                 { id: "scoreSwap", name: "風水輪流轉！", desc: "雙方分數互換！" },
                 { id: "scoreThief", name: "分數小偷", desc: "從對手那裡偷 2 分！" },
                 { id: "catchUp", name: "迎頭趕上", desc: "自己直接加 3 分！" },
                 { id: "doublePoints", name: "決戰時刻！", desc: "下一回合的分數加倍！" }
             ];
-            let currentChanceEffect = null; // 儲存抽到的效果
+            let currentChanceEffect = null; 
 
             let gameState = {
                 round: 1,
@@ -466,7 +465,8 @@
                 scores: { A: 0, B: 0 },
                 timeElapsed: { A: 0, B: 0 },
                 finished: { A: false, B: false },
-                isDoublePoints: false // 下一回合是否分數加倍
+                isDoublePoints: false,
+                draggedCard: null // 【V2.3 修正】將 draggedCard 移到全域 gameState
             };
 
             // DOM 元素
@@ -498,7 +498,7 @@
             // 規則彈窗
             const rulesModal = document.getElementById('rules-modal');
             const showRulesBtn = document.getElementById('show-rules-btn');
-            const closeBtn = rulesModal.querySelector('.close-btn'); // 修正抓取按鈕的方式
+            const closeBtn = rulesModal.querySelector('.close-btn'); 
             showRulesBtn.onclick = () => rulesModal.style.display = 'block';
             closeBtn.onclick = () => rulesModal.style.display = 'none';
             window.onclick = (event) => {
@@ -532,7 +532,16 @@
             function initializeGame() {
                 setupDragAndDrop(elementsA.handGrid, elementsA.answerSlots, elementsA.finishBtn, 'A');
                 setupDragAndDrop(elementsB.handGrid, elementsB.answerSlots, elementsB.finishBtn, 'B');
-                resetGame(); // 使用 resetGame 來初始化
+                
+                // 【V2.3 修正】防止 iPad 在拖曳時滾動頁面
+                // 我們監聽 "touchmove"，如果 "draggedCard" 存在 (代表正在拖曳)，就阻止預設的滾動行為
+                document.addEventListener('touchmove', (e) => {
+                    if (gameState.draggedCard) {
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+
+                resetGame(); 
             }
 
             function startRound() {
@@ -661,7 +670,7 @@
                 handCards.forEach((card, i) => {
                     const cardElement = document.createElement('div');
                     cardElement.className = 'card';
-                    cardElement.draggable = true;
+                    cardElement.draggable = true; // 保持 draggable=true
                     cardElement.id = `card-${player}-${i}`;
                     cardElement.dataset.base = card.base;
                     cardElement.dataset.power = card.power;
@@ -681,7 +690,7 @@
                 gameState.timeElapsed[player] = 0;
                 const timerElement = (player === 'A') ? elementsA.timer : elementsB.timer;
                 
-                timerElement.style.color = '#333'; // 重置為預設顏色
+                timerElement.style.color = '#333'; 
 
                 gameState.timers[player] = setInterval(() => {
                     if (gameState.finished[player]) {
@@ -693,10 +702,8 @@
                     
                     if (gameState.timeElapsed[player] > TIME_LIMIT_SECONDS) {
                         clearInterval(gameState.timers[player]);
-                        
                         timerElement.textContent = "1:00 (時間到!)";
-                        timerElement.style.color = '#d9534f'; // 變成紅色
-                        
+                        timerElement.style.color = '#d9534f'; 
                         finishRound(player); 
                         return;
                     }
@@ -710,22 +717,27 @@
             
             // --- 拖曳功能 ---
             function setupDragAndDrop(handGrid, answerSlots, finishBtn, player) {
-                let draggedCard = null;
+                // 【V2.3 修正】 draggedCard 變數現在在 gameState 中
 
+                // 監聽手牌區
                 handGrid.addEventListener('dragstart', (e) => {
-                    if (e.target.classList.contains('card')) {
-                        draggedCard = e.target;
-                        setTimeout(() => e.target.classList.add('dragging'), 0);
+                    // 【V2.3 修正】使用 .closest() 來抓取卡片
+                    // 這樣即使用戶點到 <sup> 數字，也能抓到外層的 .card
+                    const card = e.target.closest('.card');
+                    if (card) {
+                        gameState.draggedCard = card; // 存到全域
+                        setTimeout(() => card.classList.add('dragging'), 0);
                     }
                 });
 
                 handGrid.addEventListener('dragend', (e) => {
-                    if (draggedCard) {
-                        draggedCard.classList.remove('dragging');
-                        draggedCard = null;
+                    if (gameState.draggedCard) {
+                        gameState.draggedCard.classList.remove('dragging');
+                        gameState.draggedCard = null; // 清空全域
                     }
                 });
 
+                // 監聽答案區的每個插槽
                 answerSlots.forEach(slot => {
                     slot.addEventListener('dragover', (e) => {
                         e.preventDefault(); 
@@ -741,8 +753,9 @@
                     slot.addEventListener('drop', (e) => {
                         e.preventDefault();
                         slot.classList.remove('over');
-                        if (!draggedCard) return;
-                        const cardBase = draggedCard.dataset.base;
+                        if (!gameState.draggedCard) return;
+
+                        const cardBase = gameState.draggedCard.dataset.base;
                         const slotBase = slot.dataset.base;
 
                         if (cardBase == 1 || cardBase == slotBase) {
@@ -751,20 +764,21 @@
                                 slot.classList.remove('filled');
                             }
                             slot.innerHTML = '';
-                            slot.appendChild(draggedCard);
-                            draggedCard.classList.add('placed');
+                            slot.appendChild(gameState.draggedCard);
+                            gameState.draggedCard.classList.add('placed');
                             slot.classList.add('filled');
-                            draggedCard = null;
+                            // gameState.draggedCard = null; //不清空，讓 dragend 來清空
                             checkAllSlotsFilled(answerSlots, finishBtn);
                         }
                     });
                 });
                 
+                // 讓卡片可以被拖回手牌區
                 handGrid.addEventListener('dragover', (e) => e.preventDefault());
                 handGrid.addEventListener('drop', (e) => {
-                    if (draggedCard && (e.target === handGrid || e.target.classList.contains('player-zone'))) {
-                        handGrid.appendChild(draggedCard);
-                        draggedCard.classList.remove('placed');
+                    if (gameState.draggedCard && (e.target === handGrid || e.target.classList.contains('player-zone'))) {
+                        handGrid.appendChild(gameState.draggedCard);
+                        gameState.draggedCard.classList.remove('placed');
                         answerSlots.forEach(slot => {
                             if (slot.classList.contains('filled') && !slot.querySelector('.card')) {
                                 slot.innerHTML = slot.dataset.base;
@@ -784,7 +798,7 @@
                         allFilled = false;
                     }
                 });
-                finishBtn.disabled = !allFilled; // 如果全滿, 啟用按鈕
+                finishBtn.disabled = !allFilled; 
             }
             
             // --- 回合結束與計分 ---
@@ -896,9 +910,9 @@
                 } 
                 else if (effectId === 'scoreThief') {
                     if (A < B) { // A 落後
-                        gameState.scores = { A: A + 2, B: Math.max(0, B - 2) }; // B 最低 0 分
+                        gameState.scores = { A: A + 2, B: Math.max(0, B - 2) }; 
                     } else { // B 落後
-                        gameState.scores = { A: Math.max(0, A - 2), B: B + 2 }; // A 最低 0 分
+                        gameState.scores = { A: Math.max(0, A - 2), B: B + 2 }; 
                     }
                 }
                 else if (effectId === 'catchUp') {
@@ -909,7 +923,7 @@
                     }
                 }
                 else if (effectId === 'doublePoints') {
-                    gameState.isDoublePoints = true; // 下一回合加倍
+                    gameState.isDoublePoints = true; 
                 }
 
                 elementsA.score.textContent = gameState.scores.A;
@@ -947,6 +961,7 @@
                 gameState.scores = { A: 0, B: 0 };
                 gameState.finished = { A: false, B: false };
                 gameState.isDoublePoints = false;
+                gameState.draggedCard = null; // 【V2.3 修正】
                 if (gameState.timers.A) clearInterval(gameState.timers.A);
                 if (gameState.timers.B) clearInterval(gameState.timers.B);
 
