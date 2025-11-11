@@ -937,4 +937,190 @@
                 
                 if (gameState.timeElapsed[player] <= TIME_LIMIT_SECONDS) {
                     elements.answerSlots.forEach((slot, index) => {
-                        const card = slot
+                        const card = slot.querySelector('.card');
+                        if (!card) {
+                            isCorrect = false;
+                            return;
+                        }
+                        const correctPower = gameState.correctAnswer[index];
+                        const cardBase = card.dataset.base;
+                        const cardPower = card.dataset.power;
+
+                        if (correctPower == 0) {
+                            if (cardBase != 1) isCorrect = false;
+                        } else {
+                            const correctBase = BASES[index];
+                            if (cardBase != correctBase || cardPower != correctPower) {
+                                isCorrect = false;
+                            }
+                        }
+                    });
+                } else {
+                    isCorrect = false;
+                }
+
+                // V2.2 新計分規則
+                let scoreEarned = 0;
+                if (isCorrect) {
+                    const time = gameState.timeElapsed[player];
+                    if (time <= 15) {
+                        scoreEarned = 4;
+                    } else if (time <= 30) {
+                        scoreEarned = 3;
+                    } else if (time <= 45) {
+                        scoreEarned = 2;
+                    } else { // 46-60 秒
+                        scoreEarned = 1;
+                    }
+
+                    if (gameState.isDoublePoints) {
+                        scoreEarned *= 2;
+                    }
+                }
+                
+                gameState.scores[player] += scoreEarned;
+                elements.score.textContent = gameState.scores[player];
+                
+                if (gameState.finished.A && gameState.finished.B) {
+                    gameState.isDoublePoints = false;
+                    if (shouldTriggerChanceCard()) {
+                        showChanceCardModal();
+                    } else {
+                        proceedToNextRound();
+                    }
+                }
+            }
+
+            function shouldTriggerChanceCard() {
+                const round = gameState.round;
+                const max = MAX_ROUNDS;
+                if (gameState.scores.A === gameState.scores.B || round === max) {
+                    return false;
+                }
+                if (max === 3 && round === 2) return true;
+                if (max === 5 && round === 3) return true;
+                if (max === 7 && round === 4) return true;
+                if (max === 10 && (round === 4 || round === 8)) return true;
+                return false;
+            }
+            
+            function showChanceCardModal() {
+                const losingPlayer = (gameState.scores.A < gameState.scores.B) ? 'A' : 'B';
+                chanceCardPlayer.textContent = `輪到「玩家 ${losingPlayer}」抽卡！`;
+                chanceCardResult.style.display = 'none';
+                drawChanceCardBtn.style.display = 'block';
+                chanceCardModal.style.display = 'block';
+            }
+
+            function drawChanceCard() {
+                currentChanceEffect = CHANCE_CARDS[Math.floor(Math.random() * CHANCE_CARDS.length)];
+                chanceCardEffectName.textContent = currentChanceEffect.name;
+                chanceCardEffectDesc.textContent = currentChanceEffect.desc;
+                drawChanceCardBtn.style.display = 'none';
+                chanceCardResult.style.display = 'block';
+            }
+
+            function applyEffectAndContinue() {
+                const effectId = currentChanceEffect.id;
+                const { A, B } = gameState.scores;
+
+                if (effectId === 'scoreSwap') {
+                    gameState.scores = { A: B, B: A };
+                } 
+                else if (effectId === 'scoreThief') {
+                    if (A < B) { // A 落後
+                        gameState.scores = { A: A + 2, B: Math.max(0, B - 2) }; 
+                    } else { // B 落後
+                        gameState.scores = { A: Math.max(0, A - 2), B: B + 2 }; 
+                    }
+                }
+                else if (effectId === 'catchUp') {
+                    if (A < B) { // A 落後
+                        gameState.scores.A += 3;
+                    } else { // B 落後
+                        gameState.scores.B += 3;
+                    }
+                }
+                else if (effectId === 'doublePoints') {
+                    gameState.isDoublePoints = true; 
+                }
+
+                elementsA.score.textContent = gameState.scores.A;
+                elementsB.score.textContent = gameState.scores.B;
+
+                chanceCardModal.style.display = 'none';
+                proceedToNextRound();
+            }
+            
+            function proceedToNextRound() {
+                if (gameState.round < MAX_ROUNDS) {
+                    gameState.round++;
+                    startRoundBtn.disabled = false;
+                    startRoundBtn.textContent = `開始第 ${gameState.round} 回合`;
+                } else {
+                    endGame();
+                }
+            }
+
+            function endGame() {
+                gameOverModal.style.display = 'block';
+                if (gameState.scores.A > gameState.scores.B) {
+                    winnerMessage.textContent = `玩家 A 獲勝！ (${gameState.scores.A} vs ${gameState.scores.B})`;
+                } else if (gameState.scores.B > gameState.scores.A) {
+                    winnerMessage.textContent = `玩家 B 獲勝！ (${gameState.scores.B} vs ${gameState.scores.A})`;
+                } else {
+                    winnerMessage.textContent = `平手！ (${gameState.scores.A} vs ${gameState.scores.B})`;
+                }
+            }
+
+            function resetGame() {
+                gameState.round = 1;
+                gameState.scores = { A: 0, B: 0 };
+                gameState.finished = { A: false, B: false };
+                gameState.isDoublePoints = false;
+                activeDrags = {}; // 【V4.0 修正】
+                if (gameState.timers.A) clearInterval(gameState.timers.A);
+                if (gameState.timers.B) clearInterval(gameState.timers.B);
+
+                elementsA.score.textContent = '0';
+                elementsB.score.textContent = '0';
+                elementsA.timer.textContent = '0:00';
+                elementsB.timer.textContent = '0:00';
+                elementsA.timer.style.color = '#333';
+                elementsB.timer.style.color = '#333';
+                elementsA.problem.innerHTML = '';
+                elementsB.problem.innerHTML = '';
+                elementsA.handGrid.innerHTML = '';
+                elementsB.handGrid.innerHTML = '';
+                
+                elementsA.answerSlots.forEach(slot => {
+                    slot.innerHTML = slot.dataset.base;
+                    slot.classList.remove('filled');
+                });
+                elementsB.answerSlots.forEach(slot => {
+                    slot.innerHTML = slot.dataset.base;
+                    slot.classList.remove('filled');
+                });
+                
+                elementsA.finishBtn.disabled = true;
+                elementsB.finishBtn.disabled = true;
+
+                startRoundBtn.disabled = false;
+                startRoundBtn.textContent = '開始回合';
+                maxRoundsSelect.disabled = false; 
+                
+                MAX_ROUNDS = parseInt(maxRoundsSelect.value); 
+                roundNumberDisplay.textContent = `1 / ${MAX_ROUNDS}`;
+                problemTypeDisplay.textContent = '--';
+                
+                gameOverModal.style.display = 'none';
+                chanceCardModal.style.display = 'none';
+            }
+
+            // --- 啟動遊戲 ---
+            initializeGame();
+
+        });
+    </script>
+    </body>
+</html>
