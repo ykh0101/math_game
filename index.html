@@ -81,4 +81,1017 @@
             border: 2px solid #b0e0e6;
             border-radius: 15px;
             padding: 20px;
-            box-shadow: 0 5px 15px rgba(0,0,0
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .player-zone h3 {
+            text-align: center;
+            margin-top: 0;
+            font-size: 1.8em;
+            color: #007bff;
+        }
+
+        /* 題目顯示 */
+        .problem-display {
+            font-size: 1.4em;
+            font-weight: bold;
+            text-align: center;
+            padding: 10px;
+            margin-bottom: 15px;
+            min-height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            gap: 10px;
+            color: #333;
+        }
+        .problem-item {
+            display: inline-flex;
+            align-items: flex-end;
+            position: relative;
+            padding-right: 5px;
+        }
+        .problem-item .base {
+            font-size: 1.5em;
+            line-height: 1;
+        }
+        .problem-item .power {
+            font-size: 0.8em;
+            position: absolute;
+            top: -0.5em;
+            right: 0;
+            line-height: 1;
+        }
+        .problem-item:not(:last-child)::after {
+            content: '‧';
+            position: absolute;
+            right: -10px;
+            bottom: 0;
+            font-size: 1.2em;
+            color: #666;
+        }
+        .problem-item .power.empty {
+            width: 1em;
+            height: 1em;
+            border: 1px solid #ccc;
+            background-color: #f0f0f0;
+            display: inline-block;
+            top: 0;
+            right: 0;
+        }
+
+        .timer-display, .score-display {
+            text-align: center;
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+
+        /* 答案放置區 */
+        .answer-zone {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            padding: 10px;
+            background: #e0f7fa;
+            border-radius: 10px;
+        }
+        .answer-slot {
+            width: 65px;
+            height: 85px;
+            border: 2px dashed #007bff;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #007bff;
+            background: #fff;
+            position: relative;
+        }
+        .answer-slot.over {
+            background: #cceeff;
+            border-style: solid;
+        }
+
+        /* 手牌卡牌池 */
+        .hand-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-top: 20px;
+            min-height: 200px;
+        }
+        .card {
+            border: 1px solid #eee;
+            border-radius: 6px;
+            height: 60px;
+            display: flex;
+            justify-content: center; 
+            align-items: center; 
+            font-size: 1.8em;
+            font-weight: bold;
+            background: none;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: none;
+            color: #333;
+            padding: 5px; 
+            /* 【V3.0 修正】 為滑鼠加上 "抓取" 手勢 */
+            cursor: grab;
+            /* 【V3.0 修正】 確保卡片可以被觸控事件抓到 */
+            touch-action: none;
+        }
+        .card:active {
+            cursor: grabbing;
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            background: #f0f0f0;
+        }
+        /* 【V3.0 修正】 這個 class 會由 JS 動態加入 */
+        .card.dragging {
+            position: fixed; /* 讓卡片浮動 */
+            z-index: 1000;  /* 顯示在最上層 */
+            opacity: 0.8;
+            pointer-events: none; /* 讓滑鼠/手指事件穿透，以便偵測下方的 slot */
+        }
+        .card sup {
+            font-size: 0.6em; 
+            line-height: 0; 
+            position: relative; 
+            top: -0.7em; 
+            left: 0.1em; 
+            /* 【V3.0 修正】 確保 <sup> 也不會干擾拖曳 */
+            pointer-events: none; 
+        }
+        .card.placed {
+            background: none;
+            border-color: #eee;
+        }
+
+        /* 完成按鈕 */
+        .finish-btn {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.2em;
+            margin-top: 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .finish-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* 彈窗 (Modal) 樣式 */
+        .modal {
+            display: none; 
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px 30px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        .modal-content h2 { color: #005a9c; }
+        .modal-content ol { text-align: left; line-height: 1.8; }
+        .close-btn {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* RWD 調整 */
+        @media (max-width: 768px) {
+            .game-container {
+                flex-direction: column; 
+                align-items: center;
+            }
+            .player-zone {
+                width: 95%; 
+                max-width: unset; 
+            }
+            .hand-grid {
+                grid-template-columns: repeat(3, 1fr); 
+                gap: 8px;
+            }
+            .card {
+                height: 55px;
+                font-size: 1.6em;
+            }
+            .answer-slot {
+                width: 55px;
+                height: 75px;
+                font-size: 1.3em;
+            }
+        }
+
+        /* 機會卡彈窗樣式 */
+        .modal-content.chance-card-content {
+            background: linear-gradient(135deg, #fff7b0, #ffca5c);
+            border: 3px solid #f7971e;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .modal-content.chance-card-content h2 {
+            color: #e65100; 
+            text-shadow: 1px 1px 0px #fff;
+        }
+        #draw-chance-card-btn,
+        #continue-game-btn {
+            background-color: #f57f17; 
+            color: white;
+            font-size: 1.2em;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 15px;
+        }
+        #draw-chance-card-btn:hover,
+        #continue-game-btn:hover {
+            background-color: #e65100; 
+        }
+
+        /* 抽卡結果的樣式 */
+        #chance-card-result h3 {
+            font-size: 1.5em;
+            color: #d9534f; 
+            margin-top: 20px;
+            margin-bottom: 5px;
+        }
+        #chance-card-result p {
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+    </style>
+    </head>
+<body>
+
+    <div class="game-container">
+        <div class="controls">
+            <h2>公因數 & 公倍數PK賽</h2>
+            <button id="start-round-btn">開始回合</button>
+            <div class="problem-type-display">
+                題目: <span id="problem-type">--</span>
+            </div>
+            <div class="round-display">
+                第 <span id="round-number">1</span> / 5 回合
+            </div>
+            <div class="round-config">
+                <label for="max-rounds-select">設定回合數: </label>
+                <select id="max-rounds-select">
+                    <option value="3">3 回合 (快速)</option>
+                    <option value="5" selected>5 回合 (標準)</option>
+                    <option value="7">7 回合 (進階)</option>
+                    <option value="10">10 回合 (完整)</option>
+                    <option value="1">1 回合 (測試用)</option>
+                </select>
+            </div>
+            <button id="show-rules-btn">顯示規則</button>
+        </div>
+
+        <div class="player-zone" id="player-A">
+            <h3>玩家 A</h3>
+            <div class="problem-display" id="problem-A"></div>
+            <div class="timer-display">計時: <span id="timer-A">0:00</span></div>
+            <div class="score-display">分數: <span id="score-A">0</span></div>
+            
+            <div class="answer-zone" id="answer-zone-A">
+                <div class="answer-slot" data-base="2">2</div>
+                <div class="answer-slot" data-base="3">3</div>
+                <div class="answer-slot" data-base="5">5</div>
+                <div class="answer-slot" data-base="7">7</div>
+                <div class="answer-slot" data-base="11">11</div>
+            </div>
+            <div class="hand-grid" id="hand-grid-A"></div>
+            <button class="finish-btn" id="finish-btn-A" disabled>完成作答</button>
+        </div>
+
+        <div class="player-zone" id="player-B">
+            <h3>玩家 B</h3>
+            <div class="problem-display" id="problem-B"></div>
+            <div class="timer-display">計時: <span id="timer-B">0:00</span></div>
+            <div class="score-display">分數: <span id="score-B">0</span></div>
+
+            <div class="answer-zone" id="answer-zone-B">
+                <div class="answer-slot" data-base="2">2</div>
+                <div class="answer-slot" data-base="3">3</div>
+                <div class="answer-slot" data-base="5">5</div>
+                <div class="answer-slot" data-base="7">7</div>
+                <div class="answer-slot" data-base="11">11</div>
+            </div>
+            <div class="hand-grid" id="hand-grid-B"></div>
+            <button class="finish-btn" id="finish-btn-B" disabled>完成作答</button>
+        </div>
+    </div>
+
+    <div id="rules-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>遊戲規則 (V3.0)</h2>
+            <ol>
+                <li>每回合限時 60 秒，超時該回合 0 分。</li>
+                <li>15 秒內答對得 4 分。</li>
+                <li>30 秒內答對得 3 分。</li>
+                <li>45 秒內答對得 2 分。</li>
+                <li>60 秒內答對得 1 分。</li>
+                <li>在指定回合結束後，分數落後者可抽機會卡。</li>
+                <li>最終回合完成，統計總分。</li>
+            </ol>
+        </div>
+    </div>
+
+    <div id="game-over-modal" class="modal">
+        <div class="modal-content">
+            <h2>遊戲結束!</h2>
+            <p id="winner-message"></p>
+            <button id="restart-game-btn">重新開始</button>
+        </div>
+    </div>
+
+    <div id="chance-card-modal" class="modal">
+        <div class="modal-content chance-card-content">
+            <h2>✨ 機會卡 ✨</h2>
+            <p id="chance-card-player">輪到「玩家 X」抽卡！</p>
+            <p>請抽一張卡，平衡戰局！</p>
+            <button id="draw-chance-card-btn">抽卡</button>
+            <div id="chance-card-result" style="display: none;">
+                <h3 id="chance-card-effect-name"></h3>
+                <p id="chance-card-effect-desc"></p>
+                <button id="continue-game-btn">繼續遊戲</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // --- 全局變數和 DOM 元素 ---
+            const BASES = [2, 3, 5, 7, 11];
+            const MAX_POWER = 4;
+            let MAX_ROUNDS = 5; 
+            const TIME_LIMIT_SECONDS = 60; 
+            
+            const MASTER_CARD_LIST = [];
+            MASTER_CARD_LIST.push({ base: 1, power: 0 }); 
+            BASES.forEach(base => {
+                for (let power = 1; power <= MAX_POWER; power++) {
+                    MASTER_CARD_LIST.push({ base, power });
+                }
+            });
+
+            const CHANCE_CARDS = [
+                { id: "scoreSwap", name: "風水輪流轉！", desc: "雙方分數互換！" },
+                { id: "scoreThief", name: "分數小偷", desc: "從對手那裡偷 2 分！" },
+                { id: "catchUp", name: "迎頭趕上", desc: "自己直接加 3 分！" },
+                { id: "doublePoints", name: "決戰時刻！", desc: "下一回合的分數加倍！" }
+            ];
+            let currentChanceEffect = null; 
+
+            let gameState = {
+                round: 1,
+                problemMode: 'gcd',
+                problemA: [],
+                problemB: [],
+                correctAnswer: [],
+                timers: { A: null, B: null },
+                scores: { A: 0, B: 0 },
+                timeElapsed: { A: 0, B: 0 },
+                finished: { A: false, B: false },
+                isDoublePoints: false,
+                draggedCard: null, // 【V3.0】目前拖曳的卡片
+                isDragging: false, // 【V3.0】是否正在拖曳
+                touchOffsetX: 0,  // 【V3.0】觸控點相對卡片左上角的 X 偏移
+                touchOffsetY: 0   // 【V3.0】觸控點相對卡片左上角的 Y 偏移
+            };
+
+            // DOM 元素
+            const startRoundBtn = document.getElementById('start-round-btn');
+            const problemTypeDisplay = document.getElementById('problem-type');
+            const roundNumberDisplay = document.getElementById('round-number');
+            const maxRoundsSelect = document.getElementById('max-rounds-select');
+            
+            const elementsA = {
+                problem: document.getElementById('problem-A'),
+                timer: document.getElementById('timer-A'),
+                score: document.getElementById('score-A'),
+                answerZone: document.getElementById('answer-zone-A'),
+                handGrid: document.getElementById('hand-grid-A'),
+                finishBtn: document.getElementById('finish-btn-A'),
+                answerSlots: document.querySelectorAll('#answer-zone-A .answer-slot')
+            };
+            
+            const elementsB = {
+                problem: document.getElementById('problem-B'),
+                timer: document.getElementById('timer-B'),
+                score: document.getElementById('score-B'),
+                answerZone: document.getElementById('answer-zone-B'),
+                handGrid: document.getElementById('hand-grid-B'),
+                finishBtn: document.getElementById('finish-btn-B'),
+                answerSlots: document.querySelectorAll('#answer-zone-B .answer-slot')
+            };
+            const allAnswerSlots = document.querySelectorAll('.answer-slot'); // 【V3.0】
+
+            // 規則彈窗
+            const rulesModal = document.getElementById('rules-modal');
+            const showRulesBtn = document.getElementById('show-rules-btn');
+            const closeBtn = rulesModal.querySelector('.close-btn'); 
+            showRulesBtn.onclick = () => rulesModal.style.display = 'block';
+            closeBtn.onclick = () => rulesModal.style.display = 'none';
+            window.onclick = (event) => {
+                if (event.target == rulesModal) rulesModal.style.display = 'none';
+            };
+
+            // 遊戲結束彈窗
+            const gameOverModal = document.getElementById('game-over-modal');
+            const winnerMessage = document.getElementById('winner-message');
+            const restartGameBtn = document.getElementById('restart-game-btn');
+            restartGameBtn.onclick = resetGame; 
+
+            // 機會卡彈窗 DOM
+            const chanceCardModal = document.getElementById('chance-card-modal');
+            const chanceCardPlayer = document.getElementById('chance-card-player');
+            const drawChanceCardBtn = document.getElementById('draw-chance-card-btn');
+            const chanceCardResult = document.getElementById('chance-card-result');
+            const chanceCardEffectName = document.getElementById('chance-card-effect-name');
+            const chanceCardEffectDesc = document.getElementById('chance-card-effect-desc');
+            const continueGameBtn = document.getElementById('continue-game-btn');
+
+            // --- 事件監聽 ---
+            startRoundBtn.addEventListener('click', startRound);
+            elementsA.finishBtn.addEventListener('click', () => finishRound('A'));
+            elementsB.finishBtn.addEventListener('click', () => finishRound('B'));
+            drawChanceCardBtn.addEventListener('click', drawChanceCard);
+            continueGameBtn.addEventListener('click', applyEffectAndContinue);
+            
+            // --- 【V3.0】拖曳邏輯重寫 (滑鼠 + 觸控) ---
+            function initializeGame() {
+                // 監聽兩個玩家的手牌區
+                elementsA.handGrid.addEventListener('mousedown', dragStart);
+                elementsA.handGrid.addEventListener('touchstart', dragStart, { passive: false });
+                elementsB.handGrid.addEventListener('mousedown', dragStart);
+                elementsB.handGrid.addEventListener('touchstart', dragStart, { passive: false });
+
+                // 監聽兩個玩家的答案區 (允許從答案區拖回)
+                elementsA.answerZone.addEventListener('mousedown', dragStart);
+                elementsA.answerZone.addEventListener('touchstart', dragStart, { passive: false });
+                elementsB.answerZone.addEventListener('mousedown', dragStart);
+                elementsB.answerZone.addEventListener('touchstart', dragStart, { passive: false });
+
+                // 在整個頁面監聽 "移動" 和 "放開"
+                document.addEventListener('mousemove', dragMove);
+                document.addEventListener('touchmove', dragMove, { passive: false });
+                document.addEventListener('mouseup', dragEnd);
+                document.addEventListener('touchend', dragEnd);
+                
+                resetGame(); 
+            }
+
+            // 【V3.0】當 "按下" (滑鼠或手指)
+            function dragStart(e) {
+                // 如果不是點在 .card 上，就忽略
+                const card = e.target.closest('.card');
+                if (!card) return;
+                
+                // 如果遊戲還沒開始 (按鈕還在)，不能拖
+                if (startRoundBtn.disabled === false) return;
+
+                // 阻止預設行為 (例如長按選取文字)
+                e.preventDefault();
+
+                gameState.draggedCard = card;
+                gameState.isDragging = true;
+
+                // 取得座標
+                const touch = e.touches ? e.touches[0] : e;
+                const rect = card.getBoundingClientRect();
+                
+                // 計算偏移
+                gameState.touchOffsetX = touch.clientX - rect.left;
+                gameState.touchOffsetY = touch.clientY - rect.top;
+
+                // 讓卡片浮動
+                card.classList.add('dragging');
+                card.style.width = card.offsetWidth + 'px';
+                card.style.height = card.offsetHeight + 'px';
+                
+                // 馬上將卡片移動到手指/滑鼠位置
+                moveCard(touch.clientX, touch.clientY);
+                
+                // 如果卡片是從 answer-slot 拖出來的，清空該 slot
+                const parentSlot = card.closest('.answer-slot');
+                if (parentSlot) {
+                    parentSlot.classList.remove('filled');
+                    parentSlot.innerHTML = parentSlot.dataset.base; // 恢復數字
+                }
+            }
+
+            // 【V3.0】 helper 函數：移動卡片
+            function moveCard(x, y) {
+                if (!gameState.isDragging || !gameState.draggedCard) return;
+                gameState.draggedCard.style.left = (x - gameState.touchOffsetX) + 'px';
+                gameState.draggedCard.style.top = (y - gameState.touchOffsetY) + 'px';
+            }
+
+            // 【V3.0】當 "移動" (滑鼠或手指)
+            function dragMove(e) {
+                if (!gameState.isDragging || !gameState.draggedCard) return;
+                
+                // 阻止預設行為 (例如頁面滾動)
+                e.preventDefault();
+
+                const touch = e.touches ? e.touches[0] : e;
+                moveCard(touch.clientX, touch.clientY);
+
+                // --- 偵測是否經過 answer-slot ---
+                // 1. 隱藏卡片一下下，才能偵測到它 "下方" 的元素
+                gameState.draggedCard.style.display = 'none';
+                const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+                gameState.draggedCard.style.display = ''; // 馬上顯示回來
+
+                // 2. 清除所有 .over 狀態
+                allAnswerSlots.forEach(s => s.classList.remove('over'));
+
+                // 3. 檢查下方元素是不是 slot
+                const slotBelow = elementBelow ? elementBelow.closest('.answer-slot') : null;
+                if (slotBelow) {
+                    // 檢查是否為 "同一個玩家" 的 slot
+                    const cardPlayerZone = gameState.draggedCard.closest('.player-zone');
+                    const slotPlayerZone = slotBelow.closest('.player-zone');
+                    if(cardPlayerZone && slotPlayerZone && cardPlayerZone.id === slotPlayerZone.id) {
+                        slotBelow.classList.add('over');
+                    }
+                }
+            }
+
+            // 【V3.0】當 "放開" (滑鼠或手指)
+            function dragEnd(e) {
+                if (!gameState.isDragging || !gameState.draggedCard) return;
+
+                e.preventDefault();
+                gameState.isDragging = false;
+                
+                const card = gameState.draggedCard;
+                const touch = e.changedTouches ? e.changedTouches[0] : e;
+                
+                // --- 偵測放開位置的元素 ---
+                // 1. 同樣先隱藏卡片
+                card.style.display = 'none';
+                const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+                card.style.display = ''; 
+
+                // 2. 清除所有 .over 狀態
+                allAnswerSlots.forEach(s => s.classList.remove('over'));
+
+                // 3. 恢復卡片樣式
+                card.classList.remove('dragging');
+                card.style.position = '';
+                card.style.zIndex = '';
+                card.style.left = '';
+                card.style.top = '';
+                card.style.width = '';
+                card.style.height = '';
+
+                // --- 判斷掉落在哪裡 ---
+                const slotBelow = elementBelow ? elementBelow.closest('.answer-slot') : null;
+                const cardPlayerZone = card.closest('.player-zone'); // 卡片屬於哪個玩家
+                const originalHandGrid = cardPlayerZone.id === 'player-A' ? elementsA.handGrid : elementsB.handGrid;
+
+                // 判斷 1: 是否掉在一個 "slot" 上？
+                if (slotBelow) {
+                    const slotPlayerZone = slotBelow.closest('.player-zone');
+                    const cardBase = card.dataset.base;
+                    const slotBase = slotBelow.dataset.base;
+
+                    // 判斷 2: 是否為 "同一個玩家" 的 "正確 slot"？
+                    if (cardPlayerZone && slotPlayerZone && cardPlayerZone.id === slotPlayerZone.id && (cardBase == 1 || cardBase == slotBase)) {
+                        
+                        // 檢查 slot 是否已滿
+                        if (slotBelow.classList.contains('filled')) {
+                            // 把舊的卡片踢回手牌區
+                            originalHandGrid.appendChild(slotBelow.querySelector('.card'));
+                        }
+                        
+                        // 放入新卡片
+                        slotBelow.innerHTML = ''; // 清空 slot 上的數字
+                        slotBelow.appendChild(card);
+                        slotBelow.classList.add('filled');
+                        card.classList.add('placed');
+                    } else {
+                        // 放錯 slot (不同玩家 或 不同 base)，送回手牌區
+                        originalHandGrid.appendChild(card);
+                    }
+                } else {
+                    // 判斷 2: 不是掉在 slot 上 (例如掉回手牌區)，送回手牌區
+                    originalHandGrid.appendChild(card);
+                }
+
+                // 檢查是否 5 格都滿了
+                if (cardPlayerZone.id === 'player-A') {
+                    checkAllSlotsFilled(elementsA.answerSlots, elementsA.finishBtn);
+                } else {
+                    checkAllSlotsFilled(elementsB.answerSlots, elementsB.finishBtn);
+                }
+
+                // 清空全域變數
+                gameState.draggedCard = null;
+            }
+
+            // --- 舊有邏輯 (不變) ---
+
+            function startRound() {
+                if (gameState.round === 1) {
+                    MAX_ROUNDS = parseInt(maxRoundsSelect.value);
+                    maxRoundsSelect.disabled = true;
+                }
+                resetRoundState();
+
+                gameState.problemMode = Math.random() < 0.5 ? 'gcd' : 'lcm';
+                problemTypeDisplay.textContent = gameState.problemMode === 'gcd' ? '最大公因數' : '最小公倍數';
+                roundNumberDisplay.textContent = `${gameState.round} / ${MAX_ROUNDS}`;
+                
+                if (gameState.isDoublePoints) {
+                    problemTypeDisplay.textContent += " (分數加倍!)";
+                }
+
+                gameState.problemA = generateProblemPowers();
+                gameState.problemB = generateProblemPowers();
+                gameState.correctAnswer = calculateAnswer(gameState.problemA, gameState.problemB, gameState.problemMode);
+
+                renderProblem(elementsA.problem, gameState.problemA, "A");
+                renderProblem(elementsB.problem, gameState.problemB, "B");
+                renderHand(elementsA.handGrid, gameState.correctAnswer, 'A');
+                renderHand(elementsB.handGrid, gameState.correctAnswer, 'B');
+
+                startTimer('A');
+                startTimer('B');
+            }
+
+            function resetRoundState() {
+                startRoundBtn.disabled = true;
+                startRoundBtn.textContent = '回合進行中...';
+                
+                gameState.finished = { A: false, B: false };
+                gameState.timeElapsed = { A: 0, B: 0 };
+                
+                if (gameState.timers.A) clearInterval(gameState.timers.A);
+                if (gameState.timers.B) clearInterval(gameState.timers.B);
+                
+                elementsA.timer.textContent = '0:00';
+                elementsB.timer.textContent = '0:00';
+                elementsA.timer.style.color = '#333';
+                elementsB.timer.style.color = '#333';
+
+                elementsA.problem.innerHTML = '出題中...';
+                elementsB.problem.innerHTML = '出題中...';
+                elementsA.handGrid.innerHTML = '';
+                elementsB.handGrid.innerHTML = '';
+                elementsA.answerSlots.forEach(slot => {
+                    slot.innerHTML = slot.dataset.base;
+                    slot.classList.remove('filled');
+                    if(slot.querySelector('.card')) slot.removeChild(slot.querySelector('.card'));
+                });
+                elementsB.answerSlots.forEach(slot => {
+                    slot.innerHTML = slot.dataset.base;
+                    slot.classList.remove('filled');
+                    if(slot.querySelector('.card')) slot.removeChild(slot.querySelector('.card'));
+                });
+                
+                elementsA.finishBtn.disabled = true;
+                elementsB.finishBtn.disabled = true;
+            }
+
+            function generateProblemPowers() {
+                let powers = [];
+                for (let i = 0; i < BASES.length; i++) {
+                    powers.push(Math.floor(Math.random() * (MAX_POWER + 1)));
+                }
+                return powers;
+            }
+            
+            function renderProblem(element, powers, playerLabel) {
+                element.innerHTML = `<strong>${playerLabel} 的數字:</strong> `;
+                powers.forEach((power, index) => {
+                    const base = BASES[index];
+                    element.innerHTML += `
+                        <span class="problem-item">
+                            <span class="base">${base}</span>
+                            <sup class="power">${power}</sup>
+                        </span>
+                        ${index < BASES.length - 1 ? ' &times; ' : ''}
+                    `;
+                });
+            }
+
+            function calculateAnswer(powersA, powersB, mode) {
+                let answerPowers = [];
+                for (let i = 0; i < BASES.length; i++) {
+                    if (mode === 'gcd') {
+                        answerPowers.push(Math.min(powersA[i], powersB[i]));
+                    } else { // lcm
+                        answerPowers.push(Math.max(powersA[i], powersB[i]));
+                    }
+                }
+                return answerPowers;
+            }
+
+            function renderHand(handGridElement, answerPowers, player) {
+                let answerCards = [];
+                answerPowers.forEach((power, index) => {
+                    if (power === 0) {
+                        answerCards.push({ base: 1, power: 0 });
+                    } else {
+                        answerCards.push({ base: BASES[index], power: power });
+                    }
+                });
+
+                let distractorPool = MASTER_CARD_LIST.filter(masterCard => {
+                    return !answerCards.some(ansCard => 
+                        ansCard.base === masterCard.base && ansCard.power === masterCard.power
+                    );
+                });
+                distractorPool.sort(() => Math.random() - 0.5);
+
+                let handCards = [...answerCards];
+                while (handCards.length < 16 && distractorPool.length > 0) {
+                    handCards.push(distractorPool.pop());
+                }
+                while (handCards.length < 16) {
+                    handCards.push(MASTER_CARD_LIST[Math.floor(Math.random() * MASTER_CARD_LIST.length)]);
+                }
+
+                handCards.sort(() => Math.random() - 0.5);
+
+                handCards.forEach((card, i) => {
+                    const cardElement = document.createElement('div');
+                    cardElement.className = 'card';
+                    // 【V3.0 修正】 移除 draggable=true，我們用手動模擬
+                    cardElement.id = `card-${player}-${i}`;
+                    cardElement.dataset.base = card.base;
+                    cardElement.dataset.power = card.power;
+                    
+                    if (card.base === 1) {
+                        cardElement.innerHTML = `1`;
+                    } else {
+                        cardElement.innerHTML = `${card.base}<sup>${card.power}</sup>`;
+                    }
+                    
+                    handGridElement.appendChild(cardElement);
+                });
+            }
+            
+            function startTimer(player) {
+                gameState.timeElapsed[player] = 0;
+                const timerElement = (player === 'A') ? elementsA.timer : elementsB.timer;
+                
+                timerElement.style.color = '#333'; 
+
+                gameState.timers[player] = setInterval(() => {
+                    if (gameState.finished[player]) {
+                        clearInterval(gameState.timers[player]);
+                        return;
+                    }
+
+                    gameState.timeElapsed[player]++;
+                    
+                    if (gameState.timeElapsed[player] > TIME_LIMIT_SECONDS) {
+                        clearInterval(gameState.timers[player]);
+                        timerElement.textContent = "1:00 (時間到!)";
+                        timerElement.style.color = '#d9534f'; 
+                        finishRound(player); 
+                        return;
+                    }
+                    
+                    const minutes = Math.floor(gameState.timeElapsed[player] / 60);
+                    const seconds = gameState.timeElapsed[player] % 60;
+                    timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                    
+                }, 1000);
+            }
+            
+            function checkAllSlotsFilled(answerSlots, finishBtn) {
+                let allFilled = true;
+                answerSlots.forEach(slot => {
+                    if (!slot.classList.contains('filled')) {
+                        allFilled = false;
+                    }
+                });
+                finishBtn.disabled = !allFilled; 
+            }
+            
+            function finishRound(player) {
+                if (gameState.finished[player]) return; 
+
+                clearInterval(gameState.timers[player]);
+                gameState.finished[player] = true;
+                const elements = (player === 'A') ? elementsA : elementsB;
+                elements.finishBtn.disabled = true;
+
+                let isCorrect = true;
+                
+                if (gameState.timeElapsed[player] <= TIME_LIMIT_SECONDS) {
+                    elements.answerSlots.forEach((slot, index) => {
+                        const card = slot.querySelector('.card');
+                        if (!card) {
+                            isCorrect = false;
+                            return;
+                        }
+                        const correctPower = gameState.correctAnswer[index];
+                        const cardBase = card.dataset.base;
+                        const cardPower = card.dataset.power;
+
+                        if (correctPower == 0) {
+                            if (cardBase != 1) isCorrect = false;
+                        } else {
+                            const correctBase = BASES[index];
+                            if (cardBase != correctBase || cardPower != correctPower) {
+                                isCorrect = false;
+                            }
+                        }
+                    });
+                } else {
+                    isCorrect = false;
+                }
+
+                // V2.2 新計分規則
+                let scoreEarned = 0;
+                if (isCorrect) {
+                    const time = gameState.timeElapsed[player];
+                    if (time <= 15) {
+                        scoreEarned = 4;
+                    } else if (time <= 30) {
+                        scoreEarned = 3;
+                    } else if (time <= 45) {
+                        scoreEarned = 2;
+                    } else { // 46-60 秒
+                        scoreEarned = 1;
+                    }
+
+                    if (gameState.isDoublePoints) {
+                        scoreEarned *= 2;
+                    }
+                }
+                
+                gameState.scores[player] += scoreEarned;
+                elements.score.textContent = gameState.scores[player];
+                
+                if (gameState.finished.A && gameState.finished.B) {
+                    gameState.isDoublePoints = false;
+                    if (shouldTriggerChanceCard()) {
+                        showChanceCardModal();
+                    } else {
+                        proceedToNextRound();
+                    }
+                }
+            }
+
+            function shouldTriggerChanceCard() {
+                const round = gameState.round;
+                const max = MAX_ROUNDS;
+                if (gameState.scores.A === gameState.scores.B || round === max) {
+                    return false;
+                }
+                if (max === 3 && round === 2) return true;
+                if (max === 5 && round === 3) return true;
+                if (max === 7 && round === 4) return true;
+                if (max === 10 && (round === 4 || round === 8)) return true;
+                return false;
+            }
+            
+            function showChanceCardModal() {
+                const losingPlayer = (gameState.scores.A < gameState.scores.B) ? 'A' : 'B';
+                chanceCardPlayer.textContent = `輪到「玩家 ${losingPlayer}」抽卡！`;
+                chanceCardResult.style.display = 'none';
+                drawChanceCardBtn.style.display = 'block';
+                chanceCardModal.style.display = 'block';
+            }
+
+            function drawChanceCard() {
+                currentChanceEffect = CHANCE_CARDS[Math.floor(Math.random() * CHANCE_CARDS.length)];
+                chanceCardEffectName.textContent = currentChanceEffect.name;
+                chanceCardEffectDesc.textContent = currentChanceEffect.desc;
+                drawChanceCardBtn.style.display = 'none';
+                chanceCardResult.style.display = 'block';
+            }
+
+            function applyEffectAndContinue() {
+                const effectId = currentChanceEffect.id;
+                const { A, B } = gameState.scores;
+
+                if (effectId === 'scoreSwap') {
+                    gameState.scores = { A: B, B: A };
+                } 
+                else if (effectId === 'scoreThief') {
+                    if (A < B) { // A 落後
+                        gameState.scores = { A: A + 2, B: Math.max(0, B - 2) }; 
+                    } else { // B 落後
+                        gameState.scores = { A: Math.max(0, A - 2), B: B + 2 }; 
+                    }
+                }
+                else if (effectId === 'catchUp') {
+                    if (A < B) { // A 落後
+                        gameState.scores.A += 3;
+                    } else { // B 落後
+                        gameState.scores.B += 3;
+                    }
+                }
+                else if (effectId === 'doublePoints') {
+                    gameState.isDoublePoints = true; 
+                }
+
+                elementsA.score.textContent = gameState.scores.A;
+                elementsB.score.textContent = gameState.scores.B;
+
+                chanceCardModal.style.display = 'none';
+                proceedToNextRound();
+            }
+            
+            function proceedToNextRound() {
+                if (gameState.round < MAX_ROUNDS) {
+                    gameState.round++;
+                    startRoundBtn.disabled = false;
+                    startRoundBtn.textContent = `開始第 ${gameState.round} 回合`;
+                } else {
+                    endGame();
+                }
+            }
+
+            function endGame() {
+                gameOverModal.style.display = 'block';
+                if (gameState.scores.A > gameState.scores.B) {
+                    winnerMessage.textContent = `玩家 A 獲勝！ (${gameState.scores.A} vs ${gameState.scores.B})`;
+                } else if (gameState.scores.B > gameState.scores.A) {
+                    winnerMessage.textContent = `玩家 B 獲勝！ (${gameState.scores.B} vs ${gameState.scores.A})`;
+                } else {
+                    winnerMessage.textContent = `平手！ (${gameState.scores.A} vs ${gameState.scores.B})`;
+                }
+            }
+
+            function resetGame() {
+                gameState.round = 1;
+                gameState.scores = { A: 0, B: 0 };
+                gameState.finished = { A: false, B: false };
+                gameState.isDoublePoints = false;
+                gameState.draggedCard = null; // 【V3.0】
+                gameState.isDragging = false; // 【V3.0】
+                if (gameState.timers.A) clearInterval(gameState.timers.A);
+                if (gameState.timers.B) clearInterval(gameState.timers.B);
+
+                elementsA.score.textContent = '0';
+                elementsB.score.textContent = '0';
+                elementsA.timer.textContent = '0:00';
+                elementsB.timer.textContent = '0:00';
+                elementsA.timer.style.color = '#333';
+                elementsB.timer.style.color = '#333';
+                elementsA.problem.innerHTML = '';
+                elementsB.problem.innerHTML = '';
+                elementsA.handGrid.innerHTML = '';
+                elementsB.handGrid.innerHTML = '';
+                
+                elementsA.answerSlots.forEach(slot => {
+                    slot.innerHTML = slot.dataset.base;
+                    slot.classList.remove('filled');
+                });
+                elementsB.answerSlots.forEach(slot => {
+                    slot.innerHTML = slot.dataset.base;
+                    slot.classList.remove('filled');
+                });
+                
+                elementsA.finishBtn.disabled = true;
+                elementsB.finishBtn.disabled = true;
+
+                startRoundBtn.disabled = false;
+                startRoundBtn.textContent = '開始回合';
+                maxRoundsSelect.disabled = false; 
+                
+                MAX_ROUNDS = parseInt(maxRoundsSelect.value); 
+                roundNumberDisplay.textContent = `1 / ${MAX_ROUNDS}`;
+                problemTypeDisplay.textContent = '--';
+                
+                gameOverModal.style.display = 'none';
+                chanceCardModal.style.display = 'none';
+            }
+
+            // --- 啟動遊戲 ---
+            initializeGame();
+
+        });
+    </script>
+    </body>
+</html>
