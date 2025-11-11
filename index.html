@@ -391,3 +391,724 @@
                 <div class="answer-slot" data-base="7">7</div>
                 <div class="answer-slot" data-base="11">11</div>
             </div>
+            <div class="hand-grid" id="hand-grid-B"></div>
+            <button class="finish-btn" id="finish-btn-B" disabled>完成作答</button>
+        </div>
+    </div>
+
+    <div id="rules-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>遊戲規則 (V3.1)</h2>
+            <ol>
+                <li>每回合限時 60 秒，超時該回合 0 分。</li>
+                <li>15 秒內答對得 4 分。</li>
+                <li>30 秒內答對得 3 分。</li>
+                <li>45 秒內答對得 2 分。</li>
+                <li>60 秒內答對得 1 分。</li>
+                <li>在指定回合結束後，分數落後者可抽機會卡。</li>
+                <li>最終回合完成，統計總分。</li>
+            </ol>
+        </div>
+    </div>
+
+    <div id="game-over-modal" class="modal">
+        <div class="modal-content">
+            <h2>遊戲結束!</h2>
+            <p id="winner-message"></p>
+            <button id="restart-game-btn">重新開始</button>
+        </div>
+    </div>
+
+    <div id="chance-card-modal" class="modal">
+        <div class="modal-content chance-card-content">
+            <h2>✨ 機會卡 ✨</h2>
+            <p id="chance-card-player">輪到「玩家 X」抽卡！</p>
+            <p>請抽一張卡，平衡戰局！</p>
+            <button id="draw-chance-card-btn">抽卡</button>
+            <div id="chance-card-result" style="display: none;">
+                <h3 id="chance-card-effect-name"></h3>
+                <p id="chance-card-effect-desc"></p>
+                <button id="continue-game-btn">繼續遊戲</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // --- 全局變數和 DOM 元素 ---
+            const BASES = [2, 3, 5, 7, 11];
+            const MAX_POWER = 4;
+            let MAX_ROUNDS = 5; 
+            const TIME_LIMIT_SECONDS = 60; 
+            
+            const MASTER_CARD_LIST = [];
+            MASTER_CARD_LIST.push({ base: 1, power: 0 }); 
+            BASES.forEach(base => {
+                for (let power = 1; power <= MAX_POWER; power++) {
+                    MASTER_CARD_LIST.push({ base, power });
+                }
+            });
+
+            const CHANCE_CARDS = [
+                { id: "scoreSwap", name: "風水輪流轉！", desc: "雙方分數互換！" },
+                { id: "scoreThief", name: "分數小偷", desc: "從對手那裡偷 2 分！" },
+                { id: "catchUp", name: "迎頭趕上", desc: "自己直接加 3 分！" },
+                { id: "doublePoints", name: "決戰時刻！", desc: "下一回合的分數加倍！" }
+            ];
+            let currentChanceEffect = null; 
+
+            let gameState = {
+                round: 1,
+                problemMode: 'gcd',
+                problemA: [],
+                problemB: [],
+                correctAnswer: [],
+                timers: { A: null, B: null },
+                scores: { A: 0, B: 0 },
+                timeElapsed: { A: 0, B: 0 },
+                finished: { A: false, B: false },
+                isDoublePoints: false,
+                draggedCard: null, 
+                isDragging: false, 
+                touchOffsetX: 0,  
+                touchOffsetY: 0   
+            };
+
+            // DOM 元素
+            const startRoundBtn = document.getElementById('start-round-btn');
+            const problemTypeDisplay = document.getElementById('problem-type');
+            const roundNumberDisplay = document.getElementById('round-number');
+            const maxRoundsSelect = document.getElementById('max-rounds-select');
+            
+            const elementsA = {
+                problem: document.getElementById('problem-A'),
+                timer: document.getElementById('timer-A'),
+                score: document.getElementById('score-A'),
+                answerZone: document.getElementById('answer-zone-A'),
+                handGrid: document.getElementById('hand-grid-A'),
+                finishBtn: document.getElementById('finish-btn-A'),
+                answerSlots: document.querySelectorAll('#answer-zone-A .answer-slot')
+            };
+            
+            const elementsB = {
+                problem: document.getElementById('problem-B'),
+                timer: document.getElementById('timer-B'),
+                score: document.getElementById('score-B'),
+                answerZone: document.getElementById('answer-zone-B'),
+                handGrid: document.getElementById('hand-grid-B'),
+                finishBtn: document.getElementById('finish-btn-B'),
+                answerSlots: document.querySelectorAll('#answer-zone-B .answer-slot')
+            };
+            const allAnswerSlots = document.querySelectorAll('.answer-slot'); 
+
+            // 規則彈窗
+            const rulesModal = document.getElementById('rules-modal');
+            const showRulesBtn = document.getElementById('show-rules-btn');
+            const closeBtn = rulesModal.querySelector('.close-btn'); 
+            showRulesBtn.onclick = () => rulesModal.style.display = 'block';
+            closeBtn.onclick = () => rulesModal.style.display = 'none';
+            window.onclick = (event) => {
+                if (event.target == rulesModal) rulesModal.style.display = 'none';
+            };
+
+            // 遊戲結束彈窗
+            const gameOverModal = document.getElementById('game-over-modal');
+            const winnerMessage = document.getElementById('winner-message');
+            const restartGameBtn = document.getElementById('restart-game-btn');
+            restartGameBtn.onclick = resetGame; 
+
+            // 機會卡彈窗 DOM
+            const chanceCardModal = document.getElementById('chance-card-modal');
+            const chanceCardPlayer = document.getElementById('chance-card-player');
+            const drawChanceCardBtn = document.getElementById('draw-chance-card-btn');
+            const chanceCardResult = document.getElementById('chance-card-result');
+            const chanceCardEffectName = document.getElementById('chance-card-effect-name');
+            const chanceCardEffectDesc = document.getElementById('chance-card-effect-desc');
+            const continueGameBtn = document.getElementById('continue-game-btn');
+
+            // --- 事件監聽 ---
+            startRoundBtn.addEventListener('click', startRound);
+            elementsA.finishBtn.addEventListener('click', () => finishRound('A'));
+            elementsB.finishBtn.addEventListener('click', () => finishRound('B'));
+            drawChanceCardBtn.addEventListener('click', drawChanceCard);
+            continueGameBtn.addEventListener('click', applyEffectAndContinue);
+            
+            // --- 【V3.1】拖曳邏輯 (滑鼠 + 觸控) ---
+            function initializeGame() {
+                // 監聽兩個玩家的手牌區
+                elementsA.handGrid.addEventListener('mousedown', dragStart);
+                elementsA.handGrid.addEventListener('touchstart', dragStart, { passive: false });
+                elementsB.handGrid.addEventListener('mousedown', dragStart);
+                elementsB.handGrid.addEventListener('touchstart', dragStart, { passive: false });
+
+                // 監聽兩個玩家的答案區 (允許從答案區拖回)
+                elementsA.answerZone.addEventListener('mousedown', dragStart);
+                elementsA.answerZone.addEventListener('touchstart', dragStart, { passive: false });
+                elementsB.answerZone.addEventListener('mousedown', dragStart);
+                elementsB.answerZone.addEventListener('touchstart', dragStart, { passive: false });
+
+                // 在整個頁面監聽 "移動" 和 "放開"
+                document.addEventListener('mousemove', dragMove);
+                document.addEventListener('touchmove', dragMove, { passive: false });
+                
+                document.addEventListener('mouseup', dragEnd);
+                document.addEventListener('touchend', dragEnd);
+                
+                // 【!!! V3.1 核心修正 !!!】
+                // 監聽 "觸控取消" 事件
+                document.addEventListener('touchcancel', dragCancel);
+                
+                resetGame(); 
+            }
+
+            // 【V3.0】當 "按下" (滑鼠或手指)
+            function dragStart(e) {
+                const card = e.target.closest('.card');
+                if (!card) return;
+                if (startRoundBtn.disabled === false) return;
+
+                // 【V3.1 修正】如果已經有別人在拖曳，就忽略這次點擊 (防止多點觸控)
+                if (gameState.isDragging) return;
+
+                e.preventDefault();
+
+                gameState.draggedCard = card;
+                gameState.isDragging = true;
+
+                const touch = e.touches ? e.touches[0] : e;
+                const rect = card.getBoundingClientRect();
+                
+                gameState.touchOffsetX = touch.clientX - rect.left;
+                gameState.touchOffsetY = touch.clientY - rect.top;
+
+                card.classList.add('dragging');
+                card.style.width = card.offsetWidth + 'px';
+                card.style.height = card.offsetHeight + 'px';
+                
+                moveCard(touch.clientX, touch.clientY);
+                
+                const parentSlot = card.closest('.answer-slot');
+                if (parentSlot) {
+                    parentSlot.classList.remove('filled');
+                    parentSlot.innerHTML = parentSlot.dataset.base; 
+                }
+            }
+
+            // 【V3.0】 helper 函數：移動卡片
+            function moveCard(x, y) {
+                if (!gameState.isDragging || !gameState.draggedCard) return;
+                gameState.draggedCard.style.left = (x - gameState.touchOffsetX) + 'px';
+                gameState.draggedCard.style.top = (y - gameState.touchOffsetY) + 'px';
+            }
+
+            // 【V3.0】當 "移動" (滑鼠或手指)
+            function dragMove(e) {
+                if (!gameState.isDragging || !gameState.draggedCard) return;
+                
+                e.preventDefault();
+
+                const touch = e.touches ? e.touches[0] : e;
+                moveCard(touch.clientX, touch.clientY);
+
+                gameState.draggedCard.style.display = 'none';
+                const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+                gameState.draggedCard.style.display = ''; 
+
+                allAnswerSlots.forEach(s => s.classList.remove('over'));
+
+                const slotBelow = elementBelow ? elementBelow.closest('.answer-slot') : null;
+                if (slotBelow) {
+                    const cardPlayerZone = gameState.draggedCard.closest('.player-zone');
+                    const slotPlayerZone = slotBelow.closest('.player-zone');
+                    if(cardPlayerZone && slotPlayerZone && cardPlayerZone.id === slotPlayerZone.id) {
+                        slotBelow.classList.add('over');
+                    }
+                }
+            }
+
+            // 【V3.1】當 "放開" (滑鼠或手指) - 安全放置
+            function dragEnd(e) {
+                if (!gameState.isDragging || !gameState.draggedCard) return;
+
+                e.preventDefault();
+                
+                const card = gameState.draggedCard;
+                const touch = e.changedTouches ? e.changedTouches[0] : e;
+                
+                // 檢查 touch 物件是否存在 (touchcancel 可能沒有)
+                let elementBelow = null;
+                if (touch && touch.clientX) {
+                    card.style.display = 'none';
+                    elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+                    card.style.display = ''; 
+                }
+
+                allAnswerSlots.forEach(s => s.classList.remove('over'));
+
+                // 恢復卡片樣式
+                card.classList.remove('dragging');
+                card.style.position = '';
+                card.style.zIndex = '';
+                card.style.left = '';
+                card.style.top = '';
+                card.style.width = '';
+                card.style.height = '';
+
+                const slotBelow = elementBelow ? elementBelow.closest('.answer-slot') : null;
+                const cardPlayerZone = card.closest('.player-zone'); 
+                const originalHandGrid = cardPlayerZone.id === 'player-A' ? elementsA.handGrid : elementsB.handGrid;
+
+                if (slotBelow) {
+                    const slotPlayerZone = slotBelow.closest('.player-zone');
+                    const cardBase = card.dataset.base;
+                    const slotBase = slotBelow.dataset.base;
+
+                    if (cardPlayerZone && slotPlayerZone && cardPlayerZone.id === slotPlayerZone.id && (cardBase == 1 || cardBase == slotBase)) {
+                        
+                        if (slotBelow.classList.contains('filled')) {
+                            originalHandGrid.appendChild(slotBelow.querySelector('.card'));
+                        }
+                        
+                        slotBelow.innerHTML = ''; 
+                        slotBelow.appendChild(card);
+                        slotBelow.classList.add('filled');
+                        card.classList.add('placed');
+                    } else {
+                        originalHandGrid.appendChild(card);
+                    }
+                } else {
+                    originalHandGrid.appendChild(card);
+                }
+
+                if (cardPlayerZone.id === 'player-A') {
+                    checkAllSlotsFilled(elementsA.answerSlots, elementsA.finishBtn);
+                } else {
+                    checkAllSlotsFilled(elementsB.answerSlots, elementsB.finishBtn);
+                }
+
+                // 清空全域變數
+                gameState.isDragging = false;
+                gameState.draggedCard = null;
+            }
+
+            // 【!!! V3.1 新增函數 !!!】
+            // 當 "觸控取消" (例如多點觸控)
+            function dragCancel(e) {
+                if (!gameState.isDragging || !gameState.draggedCard) return;
+
+                e.preventDefault();
+                
+                const card = gameState.draggedCard;
+                
+                // 清除所有 .over 狀態
+                allAnswerSlots.forEach(s => s.classList.remove('over'));
+
+                // 恢復卡片樣式
+                card.classList.remove('dragging');
+                card.style.position = '';
+                card.style.zIndex = '';
+                card.style.left = '';
+                card.style.top = '';
+                card.style.width = '';
+                card.style.height = '';
+
+                // 找出卡片原本的手牌區並歸還
+                const cardPlayerZone = card.closest('.player-zone'); 
+                const originalHandGrid = cardPlayerZone.id === 'player-A' ? elementsA.handGrid : elementsB.handGrid;
+                originalHandGrid.appendChild(card);
+                
+                // 檢查手牌區的完成按鈕 (因為卡片可能被歸還)
+                if (cardPlayerZone.id === 'player-A') {
+                    checkAllSlotsFilled(elementsA.answerSlots, elementsA.finishBtn);
+                } else {
+                    checkAllSlotsFilled(elementsB.answerSlots, elementsB.finishBtn);
+                }
+
+                // 清空全域變數
+                gameState.isDragging = false;
+                gameState.draggedCard = null;
+            }
+
+
+            // --- 舊有邏輯 (不變) ---
+
+            function startRound() {
+                if (gameState.round === 1) {
+                    MAX_ROUNDS = parseInt(maxRoundsSelect.value);
+                    maxRoundsSelect.disabled = true;
+                }
+                resetRoundState();
+
+                gameState.problemMode = Math.random() < 0.5 ? 'gcd' : 'lcm';
+                problemTypeDisplay.textContent = gameState.problemMode === 'gcd' ? '最大公因數' : '最小公倍數';
+                roundNumberDisplay.textContent = `${gameState.round} / ${MAX_ROUNDS}`;
+                
+                if (gameState.isDoublePoints) {
+                    problemTypeDisplay.textContent += " (分數加倍!)";
+                }
+
+                gameState.problemA = generateProblemPowers();
+                gameState.problemB = generateProblemPowers();
+                gameState.correctAnswer = calculateAnswer(gameState.problemA, gameState.problemB, gameState.problemMode);
+
+                renderProblem(elementsA.problem, gameState.problemA, "A");
+                renderProblem(elementsB.problem, gameState.problemB, "B");
+                renderHand(elementsA.handGrid, gameState.correctAnswer, 'A');
+                renderHand(elementsB.handGrid, gameState.correctAnswer, 'B');
+
+                startTimer('A');
+                startTimer('B');
+            }
+
+            function resetRoundState() {
+                startRoundBtn.disabled = true;
+                startRoundBtn.textContent = '回合進行中...';
+                
+                gameState.finished = { A: false, B: false };
+                gameState.timeElapsed = { A: 0, B: 0 };
+                
+                if (gameState.timers.A) clearInterval(gameState.timers.A);
+                if (gameState.timers.B) clearInterval(gameState.timers.B);
+                
+                elementsA.timer.textContent = '0:00';
+                elementsB.timer.textContent = '0:00';
+                elementsA.timer.style.color = '#333';
+                elementsB.timer.style.color = '#333';
+
+                elementsA.problem.innerHTML = '出題中...';
+                elementsB.problem.innerHTML = '出題中...';
+                elementsA.handGrid.innerHTML = '';
+                elementsB.handGrid.innerHTML = '';
+                elementsA.answerSlots.forEach(slot => {
+                    slot.innerHTML = slot.dataset.base;
+                    slot.classList.remove('filled');
+                    if(slot.querySelector('.card')) slot.removeChild(slot.querySelector('.card'));
+                });
+                elementsB.answerSlots.forEach(slot => {
+                    slot.innerHTML = slot.dataset.base;
+                    slot.classList.remove('filled');
+                    if(slot.querySelector('.card')) slot.removeChild(slot.querySelector('.card'));
+                });
+                
+                elementsA.finishBtn.disabled = true;
+                elementsB.finishBtn.disabled = true;
+            }
+
+            function generateProblemPowers() {
+                let powers = [];
+                for (let i = 0; i < BASES.length; i++) {
+                    powers.push(Math.floor(Math.random() * (MAX_POWER + 1)));
+                }
+                return powers;
+            }
+            
+            function renderProblem(element, powers, playerLabel) {
+                element.innerHTML = `<strong>${playerLabel} 的數字:</strong> `;
+                powers.forEach((power, index) => {
+                    const base = BASES[index];
+                    element.innerHTML += `
+                        <span class="problem-item">
+                            <span class="base">${base}</span>
+                            <sup class="power">${power}</sup>
+                        </span>
+                        ${index < BASES.length - 1 ? ' &times; ' : ''}
+                    `;
+                });
+            }
+
+            function calculateAnswer(powersA, powersB, mode) {
+                let answerPowers = [];
+                for (let i = 0; i < BASES.length; i++) {
+                    if (mode === 'gcd') {
+                        answerPowers.push(Math.min(powersA[i], powersB[i]));
+                    } else { // lcm
+                        answerPowers.push(Math.max(powersA[i], powersB[i]));
+                    }
+                }
+                return answerPowers;
+            }
+
+            function renderHand(handGridElement, answerPowers, player) {
+                let answerCards = [];
+                answerPowers.forEach((power, index) => {
+                    if (power === 0) {
+                        answerCards.push({ base: 1, power: 0 });
+                    } else {
+                        answerCards.push({ base: BASES[index], power: power });
+                    }
+                });
+
+                let distractorPool = MASTER_CARD_LIST.filter(masterCard => {
+                    return !answerCards.some(ansCard => 
+                        ansCard.base === masterCard.base && ansCard.power === masterCard.power
+                    );
+                });
+                distractorPool.sort(() => Math.random() - 0.5);
+
+                let handCards = [...answerCards];
+                while (handCards.length < 16 && distractorPool.length > 0) {
+                    handCards.push(distractorPool.pop());
+                }
+                while (handCards.length < 16) {
+                    handCards.push(MASTER_CARD_LIST[Math.floor(Math.random() * MASTER_CARD_LIST.length)]);
+                }
+
+                handCards.sort(() => Math.random() - 0.5);
+
+                handCards.forEach((card, i) => {
+                    const cardElement = document.createElement('div');
+                    cardElement.className = 'card';
+                    cardElement.id = `card-${player}-${i}`;
+                    cardElement.dataset.base = card.base;
+                    cardElement.dataset.power = card.power;
+                    
+                    if (card.base === 1) {
+                        cardElement.innerHTML = `1`;
+                    } else {
+                        cardElement.innerHTML = `${card.base}<sup>${card.power}</sup>`;
+                    }
+                    
+                    handGridElement.appendChild(cardElement);
+                });
+            }
+            
+            function startTimer(player) {
+                gameState.timeElapsed[player] = 0;
+                const timerElement = (player === 'A') ? elementsA.timer : elementsB.timer;
+                
+                timerElement.style.color = '#333'; 
+
+                gameState.timers[player] = setInterval(() => {
+                    if (gameState.finished[player]) {
+                        clearInterval(gameState.timers[player]);
+                        return;
+                    }
+
+                    gameState.timeElapsed[player]++;
+                    
+                    if (gameState.timeElapsed[player] > TIME_LIMIT_SECONDS) {
+                        clearInterval(gameState.timers[player]);
+                        timerElement.textContent = "1:00 (時間到!)";
+                        timerElement.style.color = '#d9534f'; 
+                        finishRound(player); 
+                        return;
+                    }
+                    
+                    const minutes = Math.floor(gameState.timeElapsed[player] / 60);
+                    const seconds = gameState.timeElapsed[player] % 60;
+                    timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                    
+                }, 1000);
+            }
+            
+            function checkAllSlotsFilled(answerSlots, finishBtn) {
+                let allFilled = true;
+                answerSlots.forEach(slot => {
+                    if (!slot.classList.contains('filled')) {
+                        allFilled = false;
+                    }
+                });
+                finishBtn.disabled = !allFilled; 
+            }
+            
+            function finishRound(player) {
+                if (gameState.finished[player]) return; 
+
+                clearInterval(gameState.timers[player]);
+                gameState.finished[player] = true;
+                const elements = (player === 'A') ? elementsA : elementsB;
+                elements.finishBtn.disabled = true;
+
+                let isCorrect = true;
+                
+                if (gameState.timeElapsed[player] <= TIME_LIMIT_SECONDS) {
+                    elements.answerSlots.forEach((slot, index) => {
+                        const card = slot.querySelector('.card');
+                        if (!card) {
+                            isCorrect = false;
+                            return;
+                        }
+                        const correctPower = gameState.correctAnswer[index];
+                        const cardBase = card.dataset.base;
+                        const cardPower = card.dataset.power;
+
+                        if (correctPower == 0) {
+                            if (cardBase != 1) isCorrect = false;
+                        } else {
+                            const correctBase = BASES[index];
+                            if (cardBase != correctBase || cardPower != correctPower) {
+                                isCorrect = false;
+                            }
+                        }
+                    });
+                } else {
+                    isCorrect = false;
+                }
+
+                // V2.2 新計分規則
+                let scoreEarned = 0;
+                if (isCorrect) {
+                    const time = gameState.timeElapsed[player];
+                    if (time <= 15) {
+                        scoreEarned = 4;
+                    } else if (time <= 30) {
+                        scoreEarned = 3;
+                    } else if (time <= 45) {
+                        scoreEarned = 2;
+                    } else { // 46-60 秒
+                        scoreEarned = 1;
+                    }
+
+                    if (gameState.isDoublePoints) {
+                        scoreEarned *= 2;
+                    }
+                }
+                
+                gameState.scores[player] += scoreEarned;
+                elements.score.textContent = gameState.scores[player];
+                
+                if (gameState.finished.A && gameState.finished.B) {
+                    gameState.isDoublePoints = false;
+                    if (shouldTriggerChanceCard()) {
+                        showChanceCardModal();
+                    } else {
+                        proceedToNextRound();
+                    }
+                }
+            }
+
+            function shouldTriggerChanceCard() {
+                const round = gameState.round;
+                const max = MAX_ROUNDS;
+                if (gameState.scores.A === gameState.scores.B || round === max) {
+                    return false;
+                }
+                if (max === 3 && round === 2) return true;
+                if (max === 5 && round === 3) return true;
+                if (max === 7 && round === 4) return true;
+                if (max === 10 && (round === 4 || round === 8)) return true;
+                return false;
+            }
+            
+            function showChanceCardModal() {
+                const losingPlayer = (gameState.scores.A < gameState.scores.B) ? 'A' : 'B';
+                chanceCardPlayer.textContent = `輪到「玩家 ${losingPlayer}」抽卡！`;
+                chanceCardResult.style.display = 'none';
+                drawChanceCardBtn.style.display = 'block';
+                chanceCardModal.style.display = 'block';
+            }
+
+            function drawChanceCard() {
+                currentChanceEffect = CHANCE_CARDS[Math.floor(Math.random() * CHANCE_CARDS.length)];
+                chanceCardEffectName.textContent = currentChanceEffect.name;
+                chanceCardEffectDesc.textContent = currentChanceEffect.desc;
+                drawChanceCardBtn.style.display = 'none';
+                chanceCardResult.style.display = 'block';
+            }
+
+            function applyEffectAndContinue() {
+                const effectId = currentChanceEffect.id;
+                const { A, B } = gameState.scores;
+
+                if (effectId === 'scoreSwap') {
+                    gameState.scores = { A: B, B: A };
+                } 
+                else if (effectId === 'scoreThief') {
+                    if (A < B) { // A 落後
+                        gameState.scores = { A: A + 2, B: Math.max(0, B - 2) }; 
+                    } else { // B 落後
+                        gameState.scores = { A: Math.max(0, A - 2), B: B + 2 }; 
+                    }
+                }
+                else if (effectId === 'catchUp') {
+                    if (A < B) { // A 落後
+                        gameState.scores.A += 3;
+                    } else { // B 落後
+                        gameState.scores.B += 3;
+                    }
+                }
+                else if (effectId === 'doublePoints') {
+                    gameState.isDoublePoints = true; 
+                }
+
+                elementsA.score.textContent = gameState.scores.A;
+                elementsB.score.textContent = gameState.scores.B;
+
+                chanceCardModal.style.display = 'none';
+                proceedToNextRound();
+            }
+            
+            function proceedToNextRound() {
+                if (gameState.round < MAX_ROUNDS) {
+                    gameState.round++;
+                    startRoundBtn.disabled = false;
+                    startRoundBtn.textContent = `開始第 ${gameState.round} 回合`;
+                } else {
+                    endGame();
+                }
+            }
+
+            function endGame() {
+                gameOverModal.style.display = 'block';
+                if (gameState.scores.A > gameState.scores.B) {
+                    winnerMessage.textContent = `玩家 A 獲勝！ (${gameState.scores.A} vs ${gameState.scores.B})`;
+                } else if (gameState.scores.B > gameState.scores.A) {
+                    winnerMessage.textContent = `玩家 B 獲勝！ (${gameState.scores.B} vs ${gameState.scores.A})`;
+                } else {
+                    winnerMessage.textContent = `平手！ (${gameState.scores.A} vs ${gameState.scores.B})`;
+                }
+            }
+
+            function resetGame() {
+                gameState.round = 1;
+                gameState.scores = { A: 0, B: 0 };
+                gameState.finished = { A: false, B: false };
+                gameState.isDoublePoints = false;
+                gameState.draggedCard = null; 
+                gameState.isDragging = false; 
+                if (gameState.timers.A) clearInterval(gameState.timers.A);
+                if (gameState.timers.B) clearInterval(gameState.timers.B);
+
+                elementsA.score.textContent = '0';
+                elementsB.score.textContent = '0';
+                elementsA.timer.textContent = '0:00';
+                elementsB.timer.textContent = '0:00';
+                elementsA.timer.style.color = '#333';
+                elementsB.timer.style.color = '#333';
+                elementsA.problem.innerHTML = '';
+                elementsB.problem.innerHTML = '';
+                elementsA.handGrid.innerHTML = '';
+                elementsB.handGrid.innerHTML = '';
+                
+                elementsA.answerSlots.forEach(slot => {
+                    slot.innerHTML = slot.dataset.base;
+                    slot.classList.remove('filled');
+                });
+                elementsB.answerSlots.forEach(slot => {
+                    slot.innerHTML = slot.dataset.base;
+                    slot.classList.remove('filled');
+                });
+                
+                elementsA.finishBtn.disabled = true;
+                elementsB.finishBtn.disabled = true;
+
+                startRoundBtn.disabled = false;
+                startRoundBtn.textContent = '開始回合';
+                maxRoundsSelect.disabled = false; 
+                
+                MAX_ROUNDS = parseInt(maxRoundsSelect.value); 
+                roundNumberDisplay.textContent = `1 / ${MAX_ROUNDS}`;
+                problemTypeDisplay.textContent = '--';
+                
+                gameOverModal.style.display = 'none';
+                chanceCardModal.style.display = 'none';
+            }
+
+            // --- 啟動遊戲 ---
+            initializeGame();
+
+        });
+    </script>
+    </body>
+</html>
